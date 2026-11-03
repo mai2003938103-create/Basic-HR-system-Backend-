@@ -17,6 +17,8 @@ import { holidayRoutes } from './modules/holidays/holidays.routes.js';
 import { leaveTypeRoutes } from './modules/leave-types/leave-types.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
 import { leaveBalanceRoutes, leaveRoutes } from './modules/leave/leave.routes.js';
+import { notificationRoutes } from './modules/notifications/notifications.routes.js';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -45,6 +47,8 @@ export function createApp(): Express {
   app.use('/api/attendance', attendanceRoutes());
   app.use('/api/leave-requests', leaveRoutes());
   app.use('/api/leave-balances', leaveBalanceRoutes());
+  app.use('/api/notifications', notificationRoutes());
+  app.use('/api/dashboard', dashboardRoutes());
 
   app.use('/api', (_req, _res, next) => next(notFound()));
   app.use(errorHandler);
