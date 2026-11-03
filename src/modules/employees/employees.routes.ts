@@ -11,6 +11,7 @@ export function employeeRoutes() {
   const r = Router();
   r.use(authenticate);
   r.get('/', authorize('employee.read'), validate({ query: listEmployeesQuery }), c.list);
+  r.get('/me', c.me);
   r.post('/', authorize('employee.create'), validate({ body: createEmployeeBody }), c.create);
   r.get('/:id', authorize('employee.read'), validate({ params: idParams }), c.get);
   r.put('/:id', authorize('employee.update'), validate({ params: idParams, body: updateEmployeeBody }), c.update);

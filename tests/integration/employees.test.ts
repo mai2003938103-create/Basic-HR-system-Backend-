@@ -137,3 +137,18 @@ describe('employees', () => {
     expect(found.body.data.map((x: any) => x.id)).toEqual([e.id]);
   });
 });
+
+describe('own profile', () => {
+  beforeEach(resetDb);
+  it('lets any signed-in employee read their own record', async () => {
+    const u = await createUser({ role: 'employee' });
+    const res = await testApp().get('/api/employees/me').set(auth(u.token));
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(u.employee!.id);
+    expect(res.body.data.basicSalary).toBeDefined();
+  });
+  it('returns 404 for an account without an employee', async () => {
+    const sa = await createUser({ role: 'super_admin', withEmployee: false });
+    expect((await testApp().get('/api/employees/me').set(auth(sa.token))).status).toBe(404);
+  });
+});

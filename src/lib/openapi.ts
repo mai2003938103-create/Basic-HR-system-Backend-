@@ -53,6 +53,7 @@ const OPS: Op[] = [
 
   { method: 'get', path: '/api/employees', tag: 'Employees', summary: 'List employees in scope', permission: 'employee.read', query: listEmployeesQuery },
   { method: 'post', path: '/api/employees', tag: 'Employees', summary: 'Create an employee (optionally with a login account)', permission: 'employee.create', body: createEmployeeBody, status: 201 },
+  { method: 'get', path: '/api/employees/me', tag: 'Employees', summary: "Caller's own employee record" },
   { method: 'get', path: '/api/employees/:id', tag: 'Employees', summary: 'Employee detail', permission: 'employee.read' },
   { method: 'put', path: '/api/employees/:id', tag: 'Employees', summary: 'Update an employee', permission: 'employee.update', body: updateEmployeeBody },
   { method: 'delete', path: '/api/employees/:id', tag: 'Employees', summary: 'Deactivate an employee (soft delete)', permission: 'employee.delete', status: 204 },
