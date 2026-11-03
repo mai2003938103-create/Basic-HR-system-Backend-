@@ -8,6 +8,7 @@ import { notFound } from './lib/errors.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { departmentRoutes } from './modules/departments/departments.routes.js';
 import { positionRoutes } from './modules/positions/positions.routes.js';
+import { fileRoutes } from './modules/files/files.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -25,6 +26,7 @@ export function createApp(): Express {
   app.use('/api/auth', authRoutes());
   app.use('/api/departments', departmentRoutes());
   app.use('/api/positions', positionRoutes());
+  app.use('/api/files', fileRoutes());
 
   app.use('/api', (_req, _res, next) => next(notFound()));
   app.use(errorHandler);

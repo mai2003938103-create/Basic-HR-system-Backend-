@@ -1,6 +1,7 @@
 import 'express-async-errors';
 import type { ErrorRequestHandler } from 'express';
-import { AppError } from '../lib/errors.js';
+import { MulterError } from 'multer';
+import { AppError, badRequest } from '../lib/errors.js';
 
 function pgCode(err: unknown): string | undefined {
   const e = err as { code?: unknown; cause?: { code?: unknown } };
@@ -9,6 +10,9 @@ function pgCode(err: unknown): string | undefined {
 }
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  if (err instanceof MulterError) {
+    err = err.code === 'LIMIT_FILE_SIZE' ? badRequest('errors.upload.tooLarge') : badRequest('errors.upload.invalidType');
+  }
   if (err instanceof AppError) {
     res.status(err.status).json({
       error: { code: err.code, message: err.messageKey, ...(err.details ? { details: err.details } : {}) },
