@@ -47,6 +47,14 @@ describe('auth', () => {
     expect(res.status).toBe(429);
   });
 
+  it('does not lock out colleagues who share one office IP', async () => {
+    const app = createApp();
+    for (let i = 0; i < 6; i++) {
+      const res = await request(app).post('/api/auth/login').send({ email: `user${i}@test.la`, password: 'Wrong1234' });
+      expect(res.status).toBe(401);
+    }
+  });
+
   it('requires a token for /me', async () => {
     const res = await request(createApp()).get('/api/auth/me');
     expect(res.status).toBe(401);
