@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './lib/errors.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -18,6 +19,8 @@ export function createApp(): Express {
   app.get('/api/health', (_req, res) => {
     res.json({ data: { status: 'ok' } });
   });
+
+  app.use('/api/auth', authRoutes());
 
   app.use('/api', (_req, _res, next) => next(notFound()));
   app.use(errorHandler);
