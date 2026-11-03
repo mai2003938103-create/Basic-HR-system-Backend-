@@ -36,6 +36,15 @@ async function toDtos() {
 }
 
 export const list = toDtos;
+
+/** Roles a user manager may grant; roles carrying role.manage only for role.manage holders. */
+export async function assignable(auth: AuthContext) {
+  const all = await toDtos();
+  const canGrantAdmin = auth.permissions.has('role.manage');
+  return all
+    .filter((r) => canGrantAdmin || !r.permissionCodes.includes('role.manage'))
+    .map(({ id, code, nameLo, nameEn, scope }) => ({ id, code, nameLo, nameEn, scope }));
+}
 export const listPermissions = () => db.select({ code: s.permissions.code, module: s.permissions.module }).from(s.permissions).orderBy(asc(s.permissions.module), asc(s.permissions.code));
 
 async function setPermissions(tx: Tx, roleId: string, codes: string[]) {

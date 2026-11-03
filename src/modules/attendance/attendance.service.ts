@@ -26,7 +26,8 @@ async function onApprovedLeave(employeeId: string, date: string) {
   const [row] = await db
     .select({ id: s.leaveRequests.id })
     .from(s.leaveRequests)
-    .where(and(eq(s.leaveRequests.employeeId, employeeId), eq(s.leaveRequests.status, 'approved'), lte(s.leaveRequests.startDate, date), gte(s.leaveRequests.endDate, date)))
+    // Only a full-day leave blocks check-in; on a half day the employee works the other half.
+    .where(and(eq(s.leaveRequests.employeeId, employeeId), eq(s.leaveRequests.status, 'approved'), eq(s.leaveRequests.halfDay, 'none'), lte(s.leaveRequests.startDate, date), gte(s.leaveRequests.endDate, date)))
     .limit(1);
   return !!row;
 }

@@ -10,9 +10,11 @@ import { page, toPaging } from '../../lib/list-query.js';
 import { hashPassword } from '../../lib/password.js';
 import { canAccessEmployee, employeeScopeWhere } from '../../lib/scope.js';
 import { revokeAll } from '../auth/auth.service.js';
+import { assertOtherSuperAdmin, isSuperAdmin } from '../../lib/super-admin.js';
 import type { createEmployeeBody, listEmployeesQuery, statusBody, updateEmployeeBody } from './employees.schema.js';
 
-export const normalizeSearch = (v: string) => v.normalize('NFC').toLowerCase().trim();
+/** NFC + lowercase; also folds Lao ໍ+າ (U+0ECD U+0EB2) into ຳ (U+0EB3), which NFC leaves apart. */
+export const normalizeSearch = (v: string) => v.normalize('NFC').replace(/\u0ECD\u0EB2/g, '\u0EB3').toLowerCase().trim();
 const searchTextOf = (e: { employeeCode: string; firstName: string; lastName: string; email: string; phone: string }) =>
   normalizeSearch([e.employeeCode, e.firstName, e.lastName, e.email, e.phone].join(' '));
 
@@ -124,9 +126,19 @@ export async function setStatus(auth: AuthContext, id: string, status: z.infer<t
   await db.transaction(async (tx) => {
     const [before] = await tx.select().from(s.employees).where(eq(s.employees.id, id)).for('update');
     if (!before) throw notFound();
+    const [linked] = await tx.select({ id: s.users.id }).from(s.users).where(eq(s.users.employeeId, id));
+    if (linked && (await isSuperAdmin(tx, linked.id))) {
+      if (!auth.permissions.has('role.manage')) throw forbidden();
+      if (INACTIVE.has(status)) await assertOtherSuperAdmin(tx, linked.id);
+    }
     await tx.update(s.employees).set({ employmentStatus: status }).where(eq(s.employees.id, id));
-    const [u] = await tx.update(s.users).set({ isActive: !INACTIVE.has(status) }).where(eq(s.users.employeeId, id)).returning({ id: s.users.id });
-    userId = u?.id;
+    // Leaving employment disables the login; coming back re-enables it. Other moves (probation → active)
+    // leave a login that an admin disabled on purpose untouched.
+    const wasInactive = INACTIVE.has(before.employmentStatus);
+    if (linked && (INACTIVE.has(status) || wasInactive)) {
+      await tx.update(s.users).set({ isActive: !INACTIVE.has(status) }).where(eq(s.users.id, linked.id));
+    }
+    userId = linked?.id;
     await audit(tx, auth, { action: 'employee.status', entity: 'employee', entityId: id, before: { employmentStatus: before.employmentStatus }, after: { employmentStatus: status } });
   });
   if (userId && INACTIVE.has(status)) await revokeAll(userId);

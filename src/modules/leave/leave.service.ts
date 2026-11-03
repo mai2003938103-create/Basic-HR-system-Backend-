@@ -196,6 +196,7 @@ async function lockRequest(tx: Tx, id: string) {
 
 async function decide(auth: AuthContext, id: string, approve: boolean, note: string | undefined) {
   await db.transaction(async (tx) => {
+    let charged: Record<string, number> | undefined;
     const { r, emp, managerId } = await lockRequest(tx, id);
     if (!canAccessEmployee(auth, emp)) throw notFound();
     if (auth.employeeId === r.employeeId) throw forbidden('errors.leave.ownRequest');
@@ -206,12 +207,13 @@ async function decide(auth: AuthContext, id: string, approve: boolean, note: str
       const [lt] = await tx.select().from(s.leaveTypes).where(eq(s.leaveTypes.id, r.leaveTypeId));
       const { byYear, dates } = await splitDays(r);
       await assertBalance(tx, r.employeeId, lt, byYear, true);
+      charged = Object.fromEntries([...byYear].map(([y, d]) => [String(y), d]));
       for (const [year, days] of byYear) {
         if (days === 0) continue;
         const b = await getOrCreateBalance(tx, r.employeeId, lt.id, year, true);
         await tx.update(s.leaveBalances).set({ usedDays: sql`${s.leaveBalances.usedDays} + ${days}` }).where(eq(s.leaveBalances.id, b.id));
       }
-      if (dates.length) {
+      if (dates.length && r.halfDay === 'none') {
         await tx
           .insert(s.attendance)
           .values(dates.map((workDate) => ({ employeeId: r.employeeId, workDate, status: 'leave' as const, note: 'leave' })))
@@ -224,7 +226,7 @@ async function decide(auth: AuthContext, id: string, approve: boolean, note: str
     }
     const [after] = await tx
       .update(s.leaveRequests)
-      .set({ status: approve ? 'approved' : 'rejected', decidedAt: new Date(), decisionNote: note ?? null, approverId: auth.employeeId ?? r.approverId })
+      .set({ status: approve ? 'approved' : 'rejected', decidedAt: new Date(), decisionNote: note ?? null, approverId: auth.employeeId ?? r.approverId, ...(charged ? { daysByYear: charged } : {}) })
       .where(eq(s.leaveRequests.id, id))
       .returning();
     await notify(tx, (await userIdOfEmployee(tx, r.employeeId)) ?? [], approve ? 'leave.approved' : 'leave.rejected', approve ? 'notifications.leaveApproved' : 'notifications.leaveRejected', {
@@ -248,17 +250,18 @@ export async function cancel(auth: AuthContext, id: string) {
     if (auth.employeeId !== r.employeeId && !auth.permissions.has('leave.manage')) throw forbidden();
     if (!canCancel(auth, r)) throw conflict('errors.leave.cannotCancel');
     if (r.status === 'approved') {
-      const { byYear, dates } = await splitDays(r);
-      for (const [year, days] of byYear) {
+      // Refund exactly what approval charged, even if holidays or working days changed since.
+      const charged: [number, number][] = r.daysByYear
+        ? Object.entries(r.daysByYear as Record<string, number>).map(([y, d]) => [Number(y), d])
+        : [...(await splitDays(r)).byYear];
+      for (const [year, days] of charged) {
         if (days === 0) continue;
         const b = await getOrCreateBalance(tx, r.employeeId, r.leaveTypeId, year, true);
         await tx.update(s.leaveBalances).set({ usedDays: sql`greatest(${s.leaveBalances.usedDays} - ${days}, 0)` }).where(eq(s.leaveBalances.id, b.id));
       }
-      if (dates.length) {
-        await tx
-          .delete(s.attendance)
-          .where(and(eq(s.attendance.employeeId, r.employeeId), inArray(s.attendance.workDate, dates), eq(s.attendance.status, 'leave'), isNull(s.attendance.checkInAt)));
-      }
+      await tx
+        .delete(s.attendance)
+        .where(and(eq(s.attendance.employeeId, r.employeeId), gte(s.attendance.workDate, r.startDate), lte(s.attendance.workDate, r.endDate), eq(s.attendance.status, 'leave'), isNull(s.attendance.checkInAt)));
     }
     const [after] = await tx.update(s.leaveRequests).set({ status: 'cancelled' }).where(eq(s.leaveRequests.id, id)).returning();
     await audit(tx, auth, { action: 'leave.cancel', entity: 'leave_request', entityId: id, before: r, after });

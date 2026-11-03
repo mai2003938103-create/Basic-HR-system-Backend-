@@ -5,7 +5,7 @@ import * as s from '../src/db/schema.js';
 import { db, pool } from '../src/db/client.js';
 import { seedBase } from './seed.js';
 
-const norm = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ').normalize('NFC').toLowerCase();
+const norm = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' ').normalize('NFC').replace(/\u0ECD\u0EB2/g, '\u0EB3').toLowerCase();
 
 const DEPTS = [
   { code: 'HR', nameLo: 'ພະແນກບຸກຄະລາກອນ', nameEn: 'Human Resources' },

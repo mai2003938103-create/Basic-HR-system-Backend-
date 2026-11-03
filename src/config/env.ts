@@ -11,6 +11,8 @@ const schema = z.object({
   ADMIN_PASSWORD: z.string().min(8).default('ChangeMe123'),
   UPLOAD_DIR: z.string().default('uploads'),
   TZ_NAME: z.string().default('Asia/Vientiane'),
+  /** Set to the number of reverse proxies in front of the API (e.g. 1 behind Nginx); 0 when exposed directly. */
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
 });
 
 function load() {

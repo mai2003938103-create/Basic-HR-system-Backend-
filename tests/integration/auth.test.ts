@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { eq } from 'drizzle-orm';
+import { eq, isNotNull } from 'drizzle-orm';
 import { createApp } from '../../src/app.js';
 import { db } from '../../src/db/client.js';
 import * as s from '../../src/db/schema.js';
@@ -77,6 +77,8 @@ describe('auth', () => {
     expect(r1.status).toBe(200);
     const c2 = cookieOf(r1)!;
     expect(c2).not.toBe(c1);
+    // outside the 30-second grace for concurrent tabs, reusing the old cookie means theft
+    await db.update(s.refreshTokens).set({ replacedAt: new Date(Date.now() - 60_000) }).where(isNotNull(s.refreshTokens.replacedAt));
     const reuse = await request(app).post('/api/auth/refresh').set('Cookie', c1);
     expect(reuse.status).toBe(401);
     const after = await request(app).post('/api/auth/refresh').set('Cookie', c2);

@@ -173,6 +173,8 @@ export const refreshTokens = pgTable(
     type: tokenType().notNull().default('refresh'),
     expiresAt: tz().notNull(),
     revokedAt: tz(),
+    /** Set when the token was rotated (not on logout); allows a short grace for concurrent tabs. */
+    replacedAt: tz(),
     ...stamps,
   },
   (t) => [index().on(t.userId)],
@@ -265,6 +267,8 @@ export const leaveRequests = pgTable(
     approverId: uuid().references(() => employees.id, { onDelete: 'restrict' }),
     decidedAt: tz(),
     decisionNote: text(),
+    /** Days charged per year at approval, e.g. {"2026": 2, "2027": 1}; refunded exactly on cancel. */
+    daysByYear: jsonb(),
     ...stamps,
   },
   (t) => [index().on(t.employeeId, t.status), index().on(t.status, t.startDate)],

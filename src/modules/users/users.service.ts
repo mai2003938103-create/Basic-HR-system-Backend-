@@ -1,7 +1,7 @@
-import { and, asc, count, desc, eq, ilike, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, type SQL } from 'drizzle-orm';
 import type { z } from 'zod';
 import { env } from '../../config/env.js';
-import { db, type Tx } from '../../db/client.js';
+import { db, type DbOrTx, type Tx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
 import type { AuthContext } from '../../lib/auth-context.js';
 import { audit } from '../../lib/audit.js';
@@ -10,6 +10,7 @@ import { likeEscape } from '../../lib/http.js';
 import { page, toPaging } from '../../lib/list-query.js';
 import { hashPassword } from '../../lib/password.js';
 import { createResetToken, revokeAll } from '../auth/auth.service.js';
+import { assertOtherSuperAdmin, isSuperAdmin } from '../../lib/super-admin.js';
 import type { createUserBody, listUsersQuery, updateUserBody } from './users.schema.js';
 
 async function toDtos(ids: string[]) {
@@ -52,31 +53,21 @@ export async function get(id: string) {
   return dto;
 }
 
+/** Roles (among `ids`) that carry role.manage — only role.manage holders may grant them. */
+export async function rolesWithRoleManage(tx: DbOrTx, ids: string[]) {
+  if (!ids.length) return [];
+  return tx
+    .select({ id: s.rolePermissions.roleId })
+    .from(s.rolePermissions)
+    .innerJoin(s.permissions, eq(s.permissions.id, s.rolePermissions.permissionId))
+    .where(and(inArray(s.rolePermissions.roleId, ids), eq(s.permissions.code, 'role.manage')));
+}
+
 async function resolveRoles(tx: Tx, auth: AuthContext, codes: string[]) {
   const roles = await tx.select().from(s.roles).where(inArray(s.roles.code, codes));
   if (roles.length !== new Set(codes).size) throw badRequest('errors.user.invalidRole', [{ field: 'roleCodes', message: 'errors.user.invalidRole' }]);
-  if (roles.some((r) => r.code === 'super_admin') && !auth.permissions.has('role.manage')) throw forbidden();
+  if (!auth.permissions.has('role.manage') && (await rolesWithRoleManage(tx, roles.map((r) => r.id))).length) throw forbidden();
   return roles;
-}
-
-/** Ensures at least one active super admin remains, excluding `userId` if it is losing the role or being deactivated. */
-async function assertOtherSuperAdmin(tx: Tx, userId: string) {
-  const [{ n }] = await tx
-    .select({ n: count() })
-    .from(s.users)
-    .innerJoin(s.userRoles, eq(s.userRoles.userId, s.users.id))
-    .innerJoin(s.roles, eq(s.roles.id, s.userRoles.roleId))
-    .where(and(eq(s.roles.code, 'super_admin'), eq(s.users.isActive, true), ne(s.users.id, userId)));
-  if (n === 0) throw conflict('errors.role.lastSuperAdmin');
-}
-
-async function isSuperAdmin(tx: Tx, userId: string) {
-  const [{ n }] = await tx
-    .select({ n: count() })
-    .from(s.userRoles)
-    .innerJoin(s.roles, eq(s.roles.id, s.userRoles.roleId))
-    .where(and(eq(s.userRoles.userId, userId), eq(s.roles.code, 'super_admin')));
-  return n > 0;
 }
 
 async function assertEmployeeFree(tx: Tx, employeeId: string | null | undefined, userId?: string) {

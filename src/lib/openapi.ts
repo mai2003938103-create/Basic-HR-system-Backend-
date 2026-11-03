@@ -66,6 +66,7 @@ const OPS: Op[] = [
   { method: 'put', path: '/api/users/:id', tag: 'Users', summary: 'Update email, roles or linked employee', permission: 'user.manage', body: updateUserBody },
   { method: 'patch', path: '/api/users/:id/status', tag: 'Users', summary: 'Activate or deactivate a user', permission: 'user.manage', body: userStatusBody },
   { method: 'post', path: '/api/users/:id/reset-link', tag: 'Users', summary: 'Create a one-time password reset link (1 hour)', permission: 'user.manage' },
+  { method: 'get', path: '/api/roles/assignable', tag: 'Roles', summary: 'Roles the caller may grant to users', permission: 'user.manage' },
   { method: 'get', path: '/api/roles', tag: 'Roles', summary: 'List roles with permissions', permission: 'role.manage' },
   { method: 'post', path: '/api/roles', tag: 'Roles', summary: 'Create a role', permission: 'role.manage', body: roleBody, status: 201 },
   { method: 'put', path: '/api/roles/:id', tag: 'Roles', summary: 'Update a role (super_admin is locked)', permission: 'role.manage', body: roleBody.omit({ code: true }).partial() },

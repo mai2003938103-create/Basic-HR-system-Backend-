@@ -9,6 +9,8 @@ import { hashPassword, verifyPassword } from '../../lib/password.js';
 
 export const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const RESET_TTL_MS = 60 * 60 * 1000;
+/** A token rotated this recently may still be used once more (several tabs refreshing together). */
+export const ROTATION_GRACE_MS = 30 * 1000;
 
 export const sha256 = (v: string) => crypto.createHash('sha256').update(v).digest('hex');
 const randomToken = () => crypto.randomBytes(48).toString('base64url');
@@ -86,20 +88,23 @@ export async function refresh(token: string | undefined) {
     .from(s.refreshTokens)
     .where(and(eq(s.refreshTokens.tokenHash, sha256(token)), eq(s.refreshTokens.type, 'refresh')));
   if (!row) throw unauthenticated('errors.auth.sessionExpired');
-  if (row.revokedAt) {
-    // Reuse of a rotated token: assume theft and end every session of this user.
-    await revokeAll(row.userId);
-    throw unauthenticated('errors.auth.sessionExpired');
-  }
   if (row.expiresAt <= new Date()) throw unauthenticated('errors.auth.sessionExpired');
-  const updated = await db
-    .update(s.refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(s.refreshTokens.id, row.id), isNull(s.refreshTokens.revokedAt)))
-    .returning({ id: s.refreshTokens.id });
+  const now = new Date();
+  const updated = row.revokedAt
+    ? []
+    : await db
+        .update(s.refreshTokens)
+        .set({ revokedAt: now, replacedAt: now })
+        .where(and(eq(s.refreshTokens.id, row.id), isNull(s.refreshTokens.revokedAt)))
+        .returning({ id: s.refreshTokens.id });
   if (updated.length === 0) {
-    await revokeAll(row.userId);
-    throw unauthenticated('errors.auth.sessionExpired');
+    const [latest] = await db.select().from(s.refreshTokens).where(eq(s.refreshTokens.id, row.id));
+    const inGrace = latest?.replacedAt && now.getTime() - latest.replacedAt.getTime() < ROTATION_GRACE_MS;
+    if (!inGrace) {
+      // Reuse of a rotated (or logged-out) token: assume theft and end every session of this user.
+      await revokeAll(row.userId);
+      throw unauthenticated('errors.auth.sessionExpired');
+    }
   }
   return session(row.userId);
 }
