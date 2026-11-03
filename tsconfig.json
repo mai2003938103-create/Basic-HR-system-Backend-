@@ -4,5 +4,5 @@
     "strict": true, "esModuleInterop": true, "skipLibCheck": true,
     "resolveJsonModule": true, "outDir": "dist", "rootDir": ".", "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "prisma"]
+  "include": ["src", "tests", "scripts", "drizzle.config.ts"]
 }
