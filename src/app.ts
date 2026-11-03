@@ -3,6 +3,8 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { notFound } from './lib/errors.js';
 
 export function createApp(): Express {
   const app = express();
@@ -17,9 +19,8 @@ export function createApp(): Express {
     res.json({ data: { status: 'ok' } });
   });
 
-  app.use('/api', (_req, res) => {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'errors.common.notFound' } });
-  });
+  app.use('/api', (_req, _res, next) => next(notFound()));
+  app.use(errorHandler);
 
   return app;
 }
