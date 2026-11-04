@@ -1,7 +1,4 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
@@ -41,8 +38,7 @@ describe('users', () => {
 
   it('protects the last active super admin', async () => {
     const sa = await createUser({ role: 'super_admin', withEmployee: false });
-    const [seeded] = await db.select().from(s.users).where(eq(s.users.email, process.env.ADMIN_EMAIL!));
-    await db.update(s.users).set({ isActive: false }).where(eq(s.users.id, seeded.id));
+    await db.user.update({ where: { email: process.env.ADMIN_EMAIL! }, data: { isActive: false } });
     const other = await createUser({ role: 'super_admin', withEmployee: false });
     // two active super admins: deactivating one is fine
     expect((await testApp().patch(`/api/users/${other.user.id}/status`).set(auth(sa.token)).send({ isActive: false })).status).toBe(200);
@@ -69,7 +65,18 @@ describe('users', () => {
     const target = await createUser({ role: 'employee' });
     const link = await testApp().post(`/api/users/${target.user.id}/reset-link`).set(auth(hr.token));
     const token = new URL(link.body.data.url).searchParams.get('token');
-    await db.update(s.refreshTokens).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(s.refreshTokens.type, 'password_reset'));
+    await db.refreshToken.updateMany({ where: { type: 'password_reset' }, data: { expiresAt: new Date(Date.now() - 1000) } });
     expect((await testApp().post('/api/auth/reset-password').send({ token, newPassword: 'Fresh1234' })).status).toBe(400);
+  });
+
+  it('treats % and _ in the search as literal characters (Review Focus 4)', async () => {
+    const role = await db.role.findUniqueOrThrow({ where: { code: 'employee' } });
+    for (const email of ['a%b@test.la', 'axb@test.la', 'a_c@test.la']) {
+      await db.user.create({ data: { email, passwordHash: 'x', roles: { create: { roleId: role.id } } } });
+    }
+    const pct = await testApp().get('/api/users?search=%25').set(auth(hr.token));
+    expect(pct.body.data.map((u: any) => u.email)).toEqual(['a%b@test.la']);
+    const under = await testApp().get('/api/users?search=a_').set(auth(hr.token));
+    expect(under.body.data.map((u: any) => u.email)).toEqual(['a_c@test.la']);
   });
 });

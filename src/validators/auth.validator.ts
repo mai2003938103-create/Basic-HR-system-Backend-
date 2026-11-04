@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { passwordSchema } from '../../utils/password.js';
+import { passwordSchema } from '../utils/password.js';
 
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('errors.validation.email'),

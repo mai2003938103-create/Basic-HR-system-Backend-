@@ -1,9 +1,6 @@
 import request from 'supertest';
-import { eq, isNotNull } from 'drizzle-orm';
 import { createApp } from '../../src/app.js';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createUser } from '../helpers/factory.js';
 import { auth } from '../helpers/app.js';
 
@@ -78,7 +75,7 @@ describe('auth', () => {
     const c2 = cookieOf(r1)!;
     expect(c2).not.toBe(c1);
     // outside the 30-second grace for concurrent tabs, reusing the old cookie means theft
-    await db.update(s.refreshTokens).set({ replacedAt: new Date(Date.now() - 60_000) }).where(isNotNull(s.refreshTokens.replacedAt));
+    await db.refreshToken.updateMany({ where: { replacedAt: { not: null } }, data: { replacedAt: new Date(Date.now() - 60_000) } });
     const reuse = await request(app).post('/api/auth/refresh').set('Cookie', c1);
     expect(reuse.status).toBe(401);
     const after = await request(app).post('/api/auth/refresh').set('Cookie', c2);
@@ -99,20 +96,20 @@ describe('auth', () => {
     const app = createApp();
     const login = await request(app).post('/api/auth/login').send({ email: user.email, password });
     const c = cookieOf(login)!;
-    await db.update(s.users).set({ isActive: false }).where(eq(s.users.id, user.id));
+    await db.user.update({ where: { id: user.id }, data: { isActive: false } });
     expect((await request(app).get('/api/auth/me').set(auth(token))).status).toBe(401);
     expect((await request(app).post('/api/auth/refresh').set('Cookie', c)).status).toBe(401);
   });
 
   it('rejects a user whose employee record is inactive', async () => {
     const { employee, token } = await createUser({ role: 'employee' });
-    await db.update(s.employees).set({ employmentStatus: 'inactive' }).where(eq(s.employees.id, employee!.id));
+    await db.employee.update({ where: { id: employee!.id }, data: { employmentStatus: 'inactive' } });
     expect((await request(createApp()).get('/api/auth/me').set(auth(token))).status).toBe(401);
   });
 
   it('changes the password', async () => {
     const { user, password, token } = await createUser({ role: 'employee' });
-    await db.update(s.users).set({ mustChangePassword: true }).where(eq(s.users.id, user.id));
+    await db.user.update({ where: { id: user.id }, data: { mustChangePassword: true } });
     const app = createApp();
     const wrong = await request(app).put('/api/auth/password').set(auth(token)).send({ currentPassword: 'Nope12345', newPassword: 'NewPass123' });
     expect(wrong.status).toBe(400);
@@ -120,7 +117,7 @@ describe('auth', () => {
     expect(weak.status).toBe(400);
     const ok = await request(app).put('/api/auth/password').set(auth(token)).send({ currentPassword: password, newPassword: 'NewPass123' });
     expect(ok.status).toBe(204);
-    const [u] = await db.select().from(s.users).where(eq(s.users.id, user.id));
+    const u = await db.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(u.mustChangePassword).toBe(false);
     const login = await request(app).post('/api/auth/login').send({ email: user.email, password: 'NewPass123' });
     expect(login.status).toBe(200);

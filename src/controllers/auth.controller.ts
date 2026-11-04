@@ -1,6 +1,6 @@
 import type { CookieOptions, Request, Response } from 'express';
-import { env } from '../../config/env.js';
-import * as svc from './auth.service.js';
+import { env } from '../config/env.js';
+import * as svc from '../services/auth.service.js';
 
 export const COOKIE = 'hrms_rt';
 const cookieOptions = (): CookieOptions => ({

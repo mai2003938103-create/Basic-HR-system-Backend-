@@ -10,7 +10,7 @@ import { localDate } from '../../utils/dates.js';
 import { page, toPaging } from '../../utils/list-query.js';
 import { hashPassword } from '../../utils/password.js';
 import { canAccessEmployee, employeeScopeWhere } from '../../utils/scope.js';
-import { revokeAll } from '../auth/auth.service.js';
+import { revokeAll } from '../../services/auth.service.js';
 import { assertOtherSuperAdmin, isSuperAdmin } from '../../utils/super-admin.js';
 import type { createEmployeeBody, listEmployeesQuery, statusBody, updateEmployeeBody } from './employees.schema.js';
 
