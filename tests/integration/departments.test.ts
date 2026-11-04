@@ -69,4 +69,11 @@ describe('departments', () => {
     const res = await testApp().get(`/api/departments/${d.id}`).set(auth(hr));
     expect(res.body.data.employeeCount).toBe(2);
   });
+
+  it('treats _ in the search as a literal character (Review Focus 4)', async () => {
+    await create(hr, { code: 'A_B', nameLo: 'ພະແນກ ກ', nameEn: 'Alpha' });
+    await create(hr, { code: 'AXB', nameLo: 'ພະແນກ ຂ', nameEn: 'Beta' });
+    const res = await testApp().get('/api/departments?search=_').set(auth(hr));
+    expect(res.body.data.map((d: any) => d.code)).toEqual(['A_B']);
+  });
 });

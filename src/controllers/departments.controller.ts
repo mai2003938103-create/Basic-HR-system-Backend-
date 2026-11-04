@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import * as svc from './positions.service.js';
+import * as svc from '../services/departments.service.js';
 
 export const list = async (req: Request, res: Response) => res.json(await svc.list(req.query as any));
 export const get = async (req: Request, res: Response) => res.json({ data: await svc.get(req.params.id) });

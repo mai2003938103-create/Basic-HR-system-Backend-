@@ -151,4 +151,22 @@ describe('own profile', () => {
     const sa = await createUser({ role: 'super_admin', withEmployee: false });
     expect((await testApp().get('/api/employees/me').set(auth(sa.token))).status).toBe(404);
   });
+
+  it('keeps calendar dates and the salary format on a non-UTC server (Review Focus 1 and 3)', async () => {
+    const hr = (await createUser({ role: 'hr_admin' })).token;
+    const created = await testApp().post('/api/employees').set(auth(hr)).send(await payload({ hireDate: '2026-11-01', basicSalary: 8500000 }));
+    expect(created.status).toBe(201);
+    const got = (await testApp().get(`/api/employees/${created.body.data.id}`).set(auth(hr))).body.data;
+    expect(got).toMatchObject({ hireDate: '2026-11-01', dateOfBirth: '1992-05-10', basicSalary: '8500000.00' });
+  });
+
+  it('treats % and _ in the search as literal characters (Review Focus 4)', async () => {
+    const hr = (await createUser({ role: 'hr_admin' })).token;
+    await createEmployee({ firstName: 'Anna' });
+    await createEmployee({ firstName: 'Bo_b' });
+    const pct = await testApp().get('/api/employees?search=%25').set(auth(hr));
+    expect(pct.body.data).toEqual([]);
+    const under = await testApp().get('/api/employees?search=o_').set(auth(hr));
+    expect(under.body.data.map((e: any) => e.firstName)).toEqual(['Bo_b']);
+  });
 });

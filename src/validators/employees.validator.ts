@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { optionalText, requiredText } from '../../utils/http.js';
-import { listQuerySchema } from '../../utils/list-query.js';
-import { passwordSchema } from '../../utils/password.js';
-import { addDays } from '../../utils/dates.js';
+import { optionalText, requiredText } from '../utils/http.js';
+import { listQuerySchema } from '../utils/list-query.js';
+import { passwordSchema } from '../utils/password.js';
+import { addDays } from '../utils/dates.js';
 
 export const SORTABLE = ['employeeCode', 'lastName', 'firstName', 'hireDate', 'createdAt'] as const;
 export const STATUSES = ['active', 'probation', 'inactive', 'terminated'] as const;
