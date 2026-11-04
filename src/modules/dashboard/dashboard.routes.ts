@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
 import * as svc from './dashboard.service.js';
 
 export function dashboardRoutes() {

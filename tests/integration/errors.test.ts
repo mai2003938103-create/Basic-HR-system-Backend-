@@ -1,9 +1,9 @@
 import express from 'express';
 import request from 'supertest';
 import { z } from 'zod';
-import { conflict } from '../../src/lib/errors.js';
-import { validate } from '../../src/middleware/validate.js';
-import { errorHandler } from '../../src/middleware/error-handler.js';
+import { conflict } from '../../src/utils/errors.js';
+import { validate } from '../../src/middlewares/validate.js';
+import { errorHandler } from '../../src/middlewares/error-handler.js';
 
 function app() {
   const a = express();
@@ -48,14 +48,19 @@ describe('error handling', () => {
     expect(JSON.stringify(res.body)).not.toContain('boom');
   });
 
-  it('maps a postgres unique violation to 409', async () => {
+  it('maps a unique violation (Prisma P2002 / MySQL 1062) to 409', async () => {
     const a = express();
     a.get('/dup', () => {
-      throw Object.assign(new Error('dup'), { code: '23505' });
+      throw Object.assign(new Error('dup'), { code: 'P2002' });
+    });
+    a.get('/dup-raw', () => {
+      throw Object.assign(new Error('dup'), { errno: 1062 });
     });
     a.use(errorHandler);
-    const res = await request(a).get('/dup');
-    expect(res.status).toBe(409);
-    expect(res.body.error.message).toBe('errors.common.duplicate');
+    for (const path of ['/dup', '/dup-raw']) {
+      const res = await request(a).get(path);
+      expect(res.status).toBe(409);
+      expect(res.body.error.message).toBe('errors.common.duplicate');
+    }
   });
 });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { listQuerySchema } from '../../lib/list-query.js';
+import { listQuerySchema } from '../../utils/list-query.js';
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'errors.validation.date');
 export const STATUSES = ['present', 'late', 'absent', 'half_day', 'leave'] as const;

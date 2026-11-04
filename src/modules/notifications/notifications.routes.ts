@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { authenticate } from '../../middleware/authenticate.js';
-import { validate } from '../../middleware/validate.js';
-import { boolQuery, idParams } from '../../lib/http.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { validate } from '../../middlewares/validate.js';
+import { boolQuery, idParams } from '../../utils/http.js';
 import * as svc from './notifications.service.js';
 
 const query = z.object({

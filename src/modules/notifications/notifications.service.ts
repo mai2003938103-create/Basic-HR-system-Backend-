@@ -1,8 +1,8 @@
 import { and, desc, count, eq, isNull, type SQL } from 'drizzle-orm';
 import { db, type DbOrTx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import { notFound } from '../../lib/errors.js';
-import { page } from '../../lib/list-query.js';
+import { notFound } from '../../utils/errors.js';
+import { page } from '../../utils/list-query.js';
 
 export async function notify(tx: DbOrTx, userIds: string | string[], type: string, titleKey: string, data: Record<string, unknown> = {}) {
   const ids = [...new Set(Array.isArray(userIds) ? userIds : [userIds])].filter(Boolean);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalText, requiredText } from '../../lib/http.js';
+import { optionalText, requiredText } from '../../utils/http.js';
 import { payrollConfigSchema } from '../payroll/config.js';
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'errors.validation.time');

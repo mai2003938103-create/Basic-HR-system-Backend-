@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildOpenApi } from '../src/lib/openapi.js';
+import { buildOpenApi } from '../src/utils/openapi.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs');
 const doc = buildOpenApi();

@@ -1,4 +1,4 @@
-import { listQuerySchema, toPaging, page } from '../../src/lib/list-query.js';
+import { listQuerySchema, toPaging, page } from '../../src/utils/list-query.js';
 
 describe('list query', () => {
   const schema = listQuerySchema(['name', 'createdAt'], 'name:asc');

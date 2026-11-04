@@ -1,8 +1,9 @@
 import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { signAccessToken } from '../../src/lib/jwt.js';
+import type { Prisma } from '../../src/generated/prisma/client.js';
+import { prisma } from '../../src/models/prisma.js';
+import { fromDateString } from '../../src/models/mappers.js';
+import { toEmployeeRow, type EmployeeRow } from '../../src/models/employee.model.js';
+import { signAccessToken } from '../../src/utils/jwt.js';
 
 let seq = 0;
 const next = () => ++seq;
@@ -11,26 +12,26 @@ let cachedHash: string | undefined;
 export const DEFAULT_PASSWORD = 'Passw0rd1';
 const hash = async () => (cachedHash ??= await bcrypt.hash(DEFAULT_PASSWORD, 4));
 
-export async function createDepartment(overrides: Partial<typeof s.departments.$inferInsert> = {}) {
+export async function createDepartment(overrides: Partial<Prisma.DepartmentUncheckedCreateInput> = {}) {
   const n = next();
-  const [d] = await db
-    .insert(s.departments)
-    .values({ code: `D${n}`, nameLo: `ພະແນກ ${n}`, nameEn: `Dept ${n}`, ...overrides })
-    .returning();
-  return d;
+  return prisma.department.create({ data: { code: `D${n}`, nameLo: `ພະແນກ ${n}`, nameEn: `Dept ${n}`, ...overrides } });
 }
 
-export async function createPosition(overrides: Partial<typeof s.positions.$inferInsert> = {}) {
+export async function createPosition(overrides: Partial<Prisma.PositionUncheckedCreateInput> = {}) {
   const n = next();
   const departmentId = overrides.departmentId ?? (await createDepartment()).id;
-  const [p] = await db
-    .insert(s.positions)
-    .values({ code: `P${n}`, nameLo: `ຕຳແໜ່ງ ${n}`, nameEn: `Position ${n}`, ...overrides, departmentId })
-    .returning();
-  return p;
+  return prisma.position.create({ data: { code: `P${n}`, nameLo: `ຕຳແໜ່ງ ${n}`, nameEn: `Position ${n}`, ...overrides, departmentId } });
 }
 
-export async function createEmployee(overrides: Partial<typeof s.employees.$inferInsert> = {}) {
+/** Overrides use the Stage 1 row shape: calendar dates as 'YYYY-MM-DD', money as strings or numbers. */
+export type EmployeeOverrides = Partial<Omit<Prisma.EmployeeUncheckedCreateInput, 'dateOfBirth' | 'hireDate' | 'endDate' | 'basicSalary'>> & {
+  dateOfBirth?: string;
+  hireDate?: string;
+  endDate?: string | null;
+  basicSalary?: string | number;
+};
+
+export async function createEmployee(overrides: EmployeeOverrides = {}): Promise<EmployeeRow> {
   const n = next();
   const departmentId = overrides.departmentId ?? (await createDepartment()).id;
   const positionId = overrides.positionId ?? (await createPosition({ departmentId })).id;
@@ -38,25 +39,26 @@ export async function createEmployee(overrides: Partial<typeof s.employees.$infe
   const lastName = overrides.lastName ?? `Last${n}`;
   const employeeCode = overrides.employeeCode ?? `E${String(n).padStart(5, '0')}`;
   const email = overrides.email ?? `e${n}@test.la`;
-  const [e] = await db
-    .insert(s.employees)
-    .values({
+  const { dateOfBirth, hireDate, endDate, basicSalary, ...rest } = overrides;
+  const e = await prisma.employee.create({
+    data: {
       gender: 'male',
-      dateOfBirth: '1990-01-01',
       phone: `0205550${String(n).padStart(4, '0')}`,
-      hireDate: '2024-01-01',
-      basicSalary: '5000000',
       searchText: [employeeCode, firstName, lastName, email].join(' ').normalize('NFC').toLowerCase(),
-      ...overrides,
+      ...rest,
+      dateOfBirth: fromDateString(dateOfBirth ?? '1990-01-01'),
+      hireDate: fromDateString(hireDate ?? '2024-01-01'),
+      endDate: endDate ? fromDateString(endDate) : null,
+      basicSalary: String(basicSalary ?? '5000000'),
       firstName,
       lastName,
       employeeCode,
       email,
       departmentId,
       positionId,
-    })
-    .returning();
-  return e;
+    },
+  });
+  return toEmployeeRow(e);
 }
 
 type RoleCode = 'super_admin' | 'hr_admin' | 'manager' | 'employee';
@@ -67,7 +69,7 @@ export async function createUser(opts: {
   managerOf?: boolean;
   active?: boolean;
   withEmployee?: boolean;
-  employee?: Partial<typeof s.employees.$inferInsert>;
+  employee?: EmployeeOverrides;
 } = { role: 'employee' }) {
   const n = next();
   const withEmployee = opts.withEmployee ?? true;
@@ -75,18 +77,17 @@ export async function createUser(opts: {
     ? await createEmployee({ ...opts.employee, ...(opts.departmentId ? { departmentId: opts.departmentId } : {}) })
     : null;
   if (employee && (opts.managerOf ?? opts.role === 'manager')) {
-    await db.update(s.departments).set({ managerId: employee.id }).where(eq(s.departments.id, employee.departmentId));
+    await prisma.department.update({ where: { id: employee.departmentId }, data: { managerId: employee.id } });
   }
-  const [role] = await db.select().from(s.roles).where(eq(s.roles.code, opts.role));
-  const [user] = await db
-    .insert(s.users)
-    .values({
+  const role = await prisma.role.findUniqueOrThrow({ where: { code: opts.role } });
+  const user = await prisma.user.create({
+    data: {
       email: employee?.email ?? `u${n}@test.la`,
       passwordHash: await hash(),
       isActive: opts.active ?? true,
       employeeId: employee?.id ?? null,
-    })
-    .returning();
-  await db.insert(s.userRoles).values({ userId: user.id, roleId: role.id });
+      roles: { create: { roleId: role.id } },
+    },
+  });
   return { user, employee, password: DEFAULT_PASSWORD, token: signAccessToken({ sub: user.id }) };
 }

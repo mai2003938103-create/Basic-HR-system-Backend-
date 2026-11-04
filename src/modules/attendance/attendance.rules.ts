@@ -1,4 +1,4 @@
-import { localDate, localMinutes, parseHHmm } from '../../lib/dates.js';
+import { localDate, localMinutes, parseHHmm } from '../../utils/dates.js';
 
 export interface RuleSettings {
   workStart: string;

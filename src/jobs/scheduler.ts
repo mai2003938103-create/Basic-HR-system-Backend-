@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { localDate } from '../lib/dates.js';
+import { localDate } from '../utils/dates.js';
 import { markAbsences } from './mark-absences.js';
 
 export function startScheduler() {

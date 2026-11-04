@@ -1,13 +1,10 @@
 import express from 'express';
 import request from 'supertest';
-import { desc } from 'drizzle-orm';
-import { authenticate } from '../../src/middleware/authenticate.js';
-import { authorize } from '../../src/middleware/authorize.js';
-import { errorHandler } from '../../src/middleware/error-handler.js';
-import { audit } from '../../src/lib/audit.js';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { resetDb } from '../helpers/db.js';
+import { authenticate } from '../../src/middlewares/authenticate.js';
+import { authorize } from '../../src/middlewares/authorize.js';
+import { errorHandler } from '../../src/middlewares/error-handler.js';
+import { audit } from '../../src/utils/audit.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createUser } from '../helpers/factory.js';
 import { auth } from '../helpers/app.js';
 
@@ -39,7 +36,7 @@ describe('authorize', () => {
     const { user } = await createUser({ role: 'hr_admin' });
     const ctx = { userId: user.id, employeeId: null, email: user.email, roles: [], permissions: new Set<string>(), scope: 'all' as const, managedDepartmentIds: [] };
     await audit(db, ctx, { action: 'user.update', entity: 'user', entityId: user.id, before: { email: 'a', passwordHash: 'h' }, after: { email: 'b', tokenHash: 't' } });
-    const [row] = await db.select().from(s.auditLogs).orderBy(desc(s.auditLogs.createdAt)).limit(1);
+    const row = (await db.auditLog.findFirst({ orderBy: { createdAt: 'desc' } }))!;
     expect(row.before).toEqual({ email: 'a' });
     expect(row.after).toEqual({ email: 'b' });
     expect(row.actorUserId).toBe(user.id);

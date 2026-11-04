@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { boolQuery, code, optionalText, requiredText } from '../../lib/http.js';
-import { listQuerySchema } from '../../lib/list-query.js';
+import { boolQuery, code, optionalText, requiredText } from '../../utils/http.js';
+import { listQuerySchema } from '../../utils/list-query.js';
 
 export const SORTABLE = ['code', 'nameLo', 'nameEn', 'createdAt'] as const;
 

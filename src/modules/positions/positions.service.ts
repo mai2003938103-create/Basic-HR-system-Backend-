@@ -2,11 +2,11 @@ import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm
 import type { z } from 'zod';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { audit } from '../../lib/audit.js';
-import { badRequest, conflict, notFound } from '../../lib/errors.js';
-import { likeEscape } from '../../lib/http.js';
-import { page, toPaging } from '../../lib/list-query.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { audit } from '../../utils/audit.js';
+import { badRequest, conflict, notFound } from '../../utils/errors.js';
+import { likeEscape } from '../../utils/http.js';
+import { page, toPaging } from '../../utils/list-query.js';
 import type { createPositionBody, listPositionsQuery, updatePositionBody } from './positions.schema.js';
 
 const employeeCount = sql<number>`(select count(*)::int from ${s.employees} where ${s.employees.positionId} = ${s.positions.id} and ${s.employees.employmentStatus} not in ('inactive','terminated'))`;

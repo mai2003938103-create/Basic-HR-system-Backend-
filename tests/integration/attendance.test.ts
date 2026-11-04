@@ -5,7 +5,7 @@ import { markAbsences } from '../../src/jobs/mark-absences.js';
 import { resetDb } from '../helpers/db.js';
 import { createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
-import { signAccessToken } from '../../src/lib/jwt.js';
+import { signAccessToken } from '../../src/utils/jwt.js';
 
 // Tuesday 03/11/2026, Vientiane = UTC+7
 const local = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00+07:00`);

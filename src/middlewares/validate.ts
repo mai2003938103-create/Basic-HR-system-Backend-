@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import { ZodError, type ZodTypeAny } from 'zod';
-import { badRequest } from '../lib/errors.js';
+import { badRequest } from '../utils/errors.js';
 
 export function zodDetails(err: ZodError) {
   return err.issues.map((i) => ({

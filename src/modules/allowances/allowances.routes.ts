@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { code, idParams, requiredText } from '../../lib/http.js';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
-import { validate } from '../../middleware/validate.js';
+import { code, idParams, requiredText } from '../../utils/http.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
+import { validate } from '../../middlewares/validate.js';
 import * as svc from './allowances.service.js';
 
 export const allowanceTypeBody = z.object({ code, nameLo: requiredText(), nameEn: requiredText(), taxable: z.boolean().optional(), isActive: z.boolean().optional() });

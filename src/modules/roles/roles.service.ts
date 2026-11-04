@@ -2,10 +2,10 @@ import { asc, count, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, type Tx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { audit } from '../../lib/audit.js';
-import { badRequest, conflict, notFound } from '../../lib/errors.js';
-import { requiredText } from '../../lib/http.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { audit } from '../../utils/audit.js';
+import { badRequest, conflict, notFound } from '../../utils/errors.js';
+import { requiredText } from '../../utils/http.js';
 
 export const roleBody = z.object({
   code: z.string().trim().min(2).max(40).regex(/^[a-z0-9_]+$/, 'errors.validation.code'),

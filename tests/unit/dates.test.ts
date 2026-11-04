@@ -1,4 +1,4 @@
-import { localDate, localMinutes, isoWeekday, parseHHmm, addDays } from '../../src/lib/dates.js';
+import { localDate, localMinutes, isoWeekday, parseHHmm, addDays } from '../../src/utils/dates.js';
 
 describe('dates (Asia/Vientiane)', () => {
   it('maps a late-UTC instant to the next local day', () => {

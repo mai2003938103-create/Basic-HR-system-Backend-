@@ -2,16 +2,16 @@ import { and, asc, count, desc, eq, inArray, like, type SQL } from 'drizzle-orm'
 import type { z } from 'zod';
 import { db, type DbOrTx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { audit } from '../../lib/audit.js';
-import { badRequest, forbidden, notFound } from '../../lib/errors.js';
-import { likeEscape } from '../../lib/http.js';
-import { localDate } from '../../lib/dates.js';
-import { page, toPaging } from '../../lib/list-query.js';
-import { hashPassword } from '../../lib/password.js';
-import { canAccessEmployee, employeeScopeWhere } from '../../lib/scope.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { audit } from '../../utils/audit.js';
+import { badRequest, forbidden, notFound } from '../../utils/errors.js';
+import { likeEscape } from '../../utils/http.js';
+import { localDate } from '../../utils/dates.js';
+import { page, toPaging } from '../../utils/list-query.js';
+import { hashPassword } from '../../utils/password.js';
+import { canAccessEmployee, employeeScopeWhere } from '../../utils/scope.js';
 import { revokeAll } from '../auth/auth.service.js';
-import { assertOtherSuperAdmin, isSuperAdmin } from '../../lib/super-admin.js';
+import { assertOtherSuperAdmin, isSuperAdmin } from '../../utils/super-admin.js';
 import type { createEmployeeBody, listEmployeesQuery, statusBody, updateEmployeeBody } from './employees.schema.js';
 
 /** NFC + lowercase; also folds Lao ໍ+າ (U+0ECD U+0EB2) into ຳ (U+0EB3), which NFC leaves apart. */

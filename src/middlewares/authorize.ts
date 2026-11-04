@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { forbidden, unauthenticated } from '../lib/errors.js';
+import { forbidden, unauthenticated } from '../utils/errors.js';
 
 /** Requires every listed permission. Must run after `authenticate`. */
 export function authorize(...permissions: string[]): RequestHandler {

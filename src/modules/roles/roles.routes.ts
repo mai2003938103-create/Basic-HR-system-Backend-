@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
-import { validate } from '../../middleware/validate.js';
-import { idParams } from '../../lib/http.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
+import { validate } from '../../middlewares/validate.js';
+import { idParams } from '../../utils/http.js';
 import * as svc from './roles.service.js';
 
 export function roleRoutes() {

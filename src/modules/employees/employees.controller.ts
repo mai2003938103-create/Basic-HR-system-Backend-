@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { badRequest, notFound } from '../../lib/errors.js';
-import { saveUpload } from '../../lib/upload.js';
+import { badRequest, notFound } from '../../utils/errors.js';
+import { saveUpload } from '../../utils/upload.js';
 import * as svc from './employees.service.js';
 
 export const list = async (req: Request, res: Response) => res.json(await svc.list(req.auth!, req.query as any));

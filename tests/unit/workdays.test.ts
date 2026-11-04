@@ -1,4 +1,4 @@
-import { leaveDaysByYear, totalLeaveDays } from '../../src/lib/workdays.js';
+import { leaveDaysByYear, totalLeaveDays } from '../../src/utils/workdays.js';
 
 const WEEK = [1, 2, 3, 4, 5];
 const none = new Set<string>();

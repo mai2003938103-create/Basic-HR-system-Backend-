@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
-import { validate } from '../../middleware/validate.js';
-import { idParams } from '../../lib/http.js';
-import { imageUpload } from '../../lib/upload.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
+import { validate } from '../../middlewares/validate.js';
+import { idParams } from '../../utils/http.js';
+import { imageUpload } from '../../utils/upload.js';
 import * as c from './employees.controller.js';
 import { attachEmployeeAllowances } from '../allowances/allowances.routes.js';
 import { createEmployeeBody, listEmployeesQuery, statusBody, updateEmployeeBody } from './employees.schema.js';

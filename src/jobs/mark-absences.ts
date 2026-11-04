@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, lte, notExists, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import * as s from '../db/schema.js';
-import { isWorkingDay } from '../lib/workdays.js';
+import { isWorkingDay } from '../utils/workdays.js';
 import { getSettings, holidaySet } from '../modules/settings/settings.service.js';
 
 /** Creates `absent` rows for active employees with no attendance and no approved leave on `date`. Idempotent. */

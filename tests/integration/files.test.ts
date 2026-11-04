@@ -1,9 +1,9 @@
 import express from 'express';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
-import { authenticate } from '../../src/middleware/authenticate.js';
-import { errorHandler } from '../../src/middleware/error-handler.js';
-import { imageUpload, documentUpload, saveUpload, registerDocumentAccess } from '../../src/lib/upload.js';
+import { authenticate } from '../../src/middlewares/authenticate.js';
+import { errorHandler } from '../../src/middlewares/error-handler.js';
+import { imageUpload, documentUpload, saveUpload, registerDocumentAccess } from '../../src/utils/upload.js';
 import { resetDb } from '../helpers/db.js';
 import { createUser } from '../helpers/factory.js';
 import { auth } from '../helpers/app.js';

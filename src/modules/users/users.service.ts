@@ -3,14 +3,14 @@ import type { z } from 'zod';
 import { env } from '../../config/env.js';
 import { db, type DbOrTx, type Tx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { audit } from '../../lib/audit.js';
-import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
-import { likeEscape } from '../../lib/http.js';
-import { page, toPaging } from '../../lib/list-query.js';
-import { hashPassword } from '../../lib/password.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { audit } from '../../utils/audit.js';
+import { badRequest, conflict, forbidden, notFound } from '../../utils/errors.js';
+import { likeEscape } from '../../utils/http.js';
+import { page, toPaging } from '../../utils/list-query.js';
+import { hashPassword } from '../../utils/password.js';
 import { createResetToken, revokeAll } from '../auth/auth.service.js';
-import { assertOtherSuperAdmin, isSuperAdmin } from '../../lib/super-admin.js';
+import { assertOtherSuperAdmin, isSuperAdmin } from '../../utils/super-admin.js';
 import type { createUserBody, listUsersQuery, updateUserBody } from './users.schema.js';
 
 async function toDtos(ids: string[]) {

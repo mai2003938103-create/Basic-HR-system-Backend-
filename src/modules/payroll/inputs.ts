@@ -2,8 +2,8 @@
 import { and, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm';
 import type { DbOrTx } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import { addDays } from '../../lib/dates.js';
-import { isWorkingDay, workingDates } from '../../lib/workdays.js';
+import { addDays } from '../../utils/dates.js';
+import { isWorkingDay, workingDates } from '../../utils/workdays.js';
 import { getSettings, holidaySet } from '../settings/settings.service.js';
 import type { PayInput } from './calc.js';
 import { getPayrollConfig } from './config.js';

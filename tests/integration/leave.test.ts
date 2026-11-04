@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/db/client.js';
 import * as s from '../../src/db/schema.js';
-import { signAccessToken } from '../../src/lib/jwt.js';
+import { signAccessToken } from '../../src/utils/jwt.js';
 import { resetDb } from '../helpers/db.js';
 import { createDepartment, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';

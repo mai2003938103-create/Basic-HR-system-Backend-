@@ -1,10 +1,10 @@
 import { and, count, eq, gte, inArray, lte, ne, notExists, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { addDays, localDate } from '../../lib/dates.js';
-import { employeeScopeWhere } from '../../lib/scope.js';
-import { isWorkingDay } from '../../lib/workdays.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { addDays, localDate } from '../../utils/dates.js';
+import { employeeScopeWhere } from '../../utils/scope.js';
+import { isWorkingDay } from '../../utils/workdays.js';
 import { getSettings, holidaySet } from '../settings/settings.service.js';
 
 const ACTIVE = ['active', 'probation'] as const;

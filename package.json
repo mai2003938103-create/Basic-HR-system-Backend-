@@ -9,12 +9,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "db:migrate": "tsx scripts/migrate.ts",
-    "db:reset": "tsx scripts/migrate.ts --reset",
-    "seed": "tsx scripts/seed.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts",
-    "db:generate": "drizzle-kit generate",
-    "docs:api": "tsx scripts/docs-api.ts"
+    "db:migrate": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force",
+    "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed-demo.ts",
+    "db:generate": "prisma migrate dev --create-only",
+    "docs:api": "tsx scripts/docs-api.ts",
+    "test:unit": "vitest run -c vitest.unit.config.ts",
+    "pretest": "prisma generate",
+    "pretypecheck": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.4",

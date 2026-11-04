@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
-import { validate } from '../../middleware/validate.js';
-import { idParams } from '../../lib/http.js';
-import { documentUpload, registerDocumentAccess, saveUpload } from '../../lib/upload.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
+import { validate } from '../../middlewares/validate.js';
+import { idParams } from '../../utils/http.js';
+import { documentUpload, registerDocumentAccess, saveUpload } from '../../utils/upload.js';
 import * as svc from './leave.service.js';
 import { approveBody, balanceUpdateBody, balancesQuery, createLeaveBody, listLeaveQuery, rejectBody } from './leave.schema.js';
 

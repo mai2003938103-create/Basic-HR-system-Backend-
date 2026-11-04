@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Router } from 'express';
-import { authenticate } from '../../middleware/authenticate.js';
-import { notFound } from '../../lib/errors.js';
-import { MIME_BY_EXT, canReadDocument, uploadRoot } from '../../lib/upload.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { notFound } from '../../utils/errors.js';
+import { MIME_BY_EXT, canReadDocument, uploadRoot } from '../../utils/upload.js';
 
 const KEY = /^[0-9a-f-]{36}\.(jpg|png|webp|pdf)$/;
 

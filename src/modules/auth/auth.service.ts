@@ -2,10 +2,10 @@ import crypto from 'node:crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import { loadAuthContext, type AuthContext } from '../../lib/auth-context.js';
-import { badRequest, unauthenticated } from '../../lib/errors.js';
-import { signAccessToken } from '../../lib/jwt.js';
-import { hashPassword, verifyPassword } from '../../lib/password.js';
+import { loadAuthContext, type AuthContext } from '../../utils/auth-context.js';
+import { badRequest, unauthenticated } from '../../utils/errors.js';
+import { signAccessToken } from '../../utils/jwt.js';
+import { hashPassword, verifyPassword } from '../../utils/password.js';
 
 export const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const RESET_TTL_MS = 60 * 60 * 1000;

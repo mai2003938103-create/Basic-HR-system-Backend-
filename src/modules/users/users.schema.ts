@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { boolQuery } from '../../lib/http.js';
-import { listQuerySchema } from '../../lib/list-query.js';
-import { passwordSchema } from '../../lib/password.js';
+import { boolQuery } from '../../utils/http.js';
+import { listQuerySchema } from '../../utils/list-query.js';
+import { passwordSchema } from '../../utils/password.js';
 
 export const listUsersQuery = listQuerySchema(['email', 'createdAt', 'lastLoginAt'], 'email:asc').extend({
   isActive: boolQuery,

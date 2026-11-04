@@ -1,10 +1,10 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import type { AuthContext } from '../../lib/auth-context.js';
-import { audit } from '../../lib/audit.js';
-import { fieldError, notFound } from '../../lib/errors.js';
-import { canAccessEmployee } from '../../lib/scope.js';
+import type { AuthContext } from '../../utils/auth-context.js';
+import { audit } from '../../utils/audit.js';
+import { fieldError, notFound } from '../../utils/errors.js';
+import { canAccessEmployee } from '../../utils/scope.js';
 
 export const allowanceTypeDto = (t: typeof s.allowanceTypes.$inferSelect) => ({ id: t.id, code: t.code, nameLo: t.nameLo, nameEn: t.nameEn, taxable: t.taxable, isActive: t.isActive });
 

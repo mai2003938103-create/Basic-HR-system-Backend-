@@ -1,4 +1,4 @@
-import { buildOpenApi } from '../../src/lib/openapi.js';
+import { buildOpenApi } from '../../src/utils/openapi.js';
 import { listRoutes } from '../../src/app.js';
 
 describe('OpenAPI', () => {

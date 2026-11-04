@@ -3,12 +3,12 @@ import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
-import { audit } from '../../lib/audit.js';
-import { notFound } from '../../lib/errors.js';
-import { idParams, requiredText } from '../../lib/http.js';
-import { authenticate } from '../../middleware/authenticate.js';
-import { authorize } from '../../middleware/authorize.js';
-import { validate } from '../../middleware/validate.js';
+import { audit } from '../../utils/audit.js';
+import { notFound } from '../../utils/errors.js';
+import { idParams, requiredText } from '../../utils/http.js';
+import { authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
+import { validate } from '../../middlewares/validate.js';
 
 const body = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'errors.validation.date'), nameLo: requiredText(), nameEn: requiredText() });
 const query = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional() });
