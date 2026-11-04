@@ -1,8 +1,6 @@
-import { and, eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
 import { markAbsences } from '../../src/jobs/mark-absences.js';
-import { resetDb } from '../helpers/db.js';
+import { fromDateString as day } from '../../src/models/mappers.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 import { signAccessToken } from '../../src/utils/jwt.js';
@@ -52,13 +50,13 @@ describe('attendance', () => {
     setNow(local('2026-11-03', '07:55'));
     const res = await Promise.all([testApp().post('/api/attendance/check-in').set(auth(token)), testApp().post('/api/attendance/check-in').set(auth(token))]);
     expect(res.map((r) => r.status).sort()).toEqual([201, 409]);
-    expect(await db.$count(s.attendance, eq(s.attendance.employeeId, employee!.id))).toBe(1);
+    expect(await db.attendance.count({ where: { employeeId: employee!.id } })).toBe(1);
   });
 
   it('blocks check-in while on approved leave', async () => {
     const { token, employee } = await createUser({ role: 'employee' });
-    const [lt] = await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, 'ANNUAL'));
-    await db.insert(s.leaveRequests).values({ employeeId: employee!.id, leaveTypeId: lt.id, startDate: '2026-11-03', endDate: '2026-11-03', days: '1', reason: 'x', status: 'approved' });
+    const lt = await db.leaveType.findUniqueOrThrow({ where: { code: 'ANNUAL' } });
+    await db.leaveRequest.create({ data: { employeeId: employee!.id, leaveTypeId: lt.id, startDate: day('2026-11-03'), endDate: day('2026-11-03'), days: '1', reason: 'x', status: 'approved' } });
     setNow(local('2026-11-03', '08:00'));
     const res = await testApp().post('/api/attendance/check-in').set(auth(token));
     expect(res.status).toBe(409);
@@ -116,15 +114,15 @@ describe('attendance', () => {
     const absent = await createEmployee();
     const onLeave = await createEmployee();
     await createEmployee({ employmentStatus: 'inactive' });
-    await db.insert(s.attendance).values({ employeeId: present.id, workDate: '2026-11-03', status: 'present', checkInAt: local('2026-11-03', '08:00') });
-    const [lt] = await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, 'ANNUAL'));
-    await db.insert(s.leaveRequests).values({ employeeId: onLeave.id, leaveTypeId: lt.id, startDate: '2026-11-02', endDate: '2026-11-04', days: '3', reason: 'x', status: 'approved' });
+    await db.attendance.create({ data: { employeeId: present.id, workDate: day('2026-11-03'), status: 'present', checkInAt: local('2026-11-03', '08:00') } });
+    const lt = await db.leaveType.findUniqueOrThrow({ where: { code: 'ANNUAL' } });
+    await db.leaveRequest.create({ data: { employeeId: onLeave.id, leaveTypeId: lt.id, startDate: day('2026-11-02'), endDate: day('2026-11-04'), days: '3', reason: 'x', status: 'approved' } });
     expect(await markAbsences('2026-11-03')).toEqual({ created: 1 });
-    const [row] = await db.select().from(s.attendance).where(and(eq(s.attendance.employeeId, absent.id), eq(s.attendance.workDate, '2026-11-03')));
+    const row = (await db.attendance.findUnique({ where: { employeeId_workDate: { employeeId: absent.id, workDate: day('2026-11-03') } } }))!;
     expect(row.status).toBe('absent');
     expect(await markAbsences('2026-11-03')).toEqual({ created: 0 });
     expect(await markAbsences('2026-11-08')).toEqual({ created: 0 }); // Sunday
-    await db.insert(s.holidays).values({ date: '2026-12-02', nameLo: 'ວັນຊາດ', nameEn: 'National Day' });
+    await db.holiday.create({ data: { date: day('2026-12-02'), nameLo: 'ວັນຊາດ', nameEn: 'National Day' } });
     expect(await markAbsences('2026-12-02')).toEqual({ created: 0 });
   });
 });

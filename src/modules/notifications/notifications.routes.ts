@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate.js';
 import { validate } from '../../middlewares/validate.js';
 import { boolQuery, idParams } from '../../utils/http.js';
-import * as svc from './notifications.service.js';
+import * as svc from '../../services/notifications.service.js';
 
 const query = z.object({
   page: z.coerce.number().int().min(1).default(1),

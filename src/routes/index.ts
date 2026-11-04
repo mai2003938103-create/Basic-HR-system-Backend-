@@ -1,7 +1,11 @@
 // Every API router and its OpenAPI entries, in mount order.
 import type { Router } from 'express';
 import type { Op } from '../utils/openapi.js';
+import { attendanceDocs, attendanceRoutes } from './attendance.routes.js';
 import { authDocs, authRoutes } from './auth.routes.js';
+import { calendarDocs, holidayRoutes, leaveTypeRoutes } from './calendar.routes.js';
+import { leaveBalanceRoutes, leaveDocs, leaveRoutes } from './leave.routes.js';
+import { settingsDocs, settingsRoutes } from './settings.routes.js';
 import { departmentDocs, departmentRoutes } from './departments.routes.js';
 import { employeeDocs, employeeRoutes } from './employees.routes.js';
 import { fileDocs, fileRoutes } from './files.routes.js';
@@ -18,10 +22,16 @@ export const MOUNTS: [string, () => Router][] = [
   ['/api/users', userRoutes],
   ['/api/roles', roleRoutes],
   ['/api/permissions', permissionRoutes],
+  ['/api/settings', settingsRoutes],
+  ['/api/holidays', holidayRoutes],
+  ['/api/leave-types', leaveTypeRoutes],
+  ['/api/attendance', attendanceRoutes],
+  ['/api/leave-requests', leaveRoutes],
+  ['/api/leave-balances', leaveBalanceRoutes],
 ];
 
 /** OpenAPI catalogue; tests/integration/openapi.test.ts keeps it in step with MOUNTS. */
-export const DOCS: Op[] = [...authDocs, ...departmentDocs, ...positionDocs, ...fileDocs, ...employeeDocs, ...userDocs, ...roleDocs];
+export const DOCS: Op[] = [...authDocs, ...departmentDocs, ...positionDocs, ...fileDocs, ...employeeDocs, ...userDocs, ...roleDocs, ...settingsDocs, ...calendarDocs, ...attendanceDocs, ...leaveDocs];
 
 /** Every API route as METHOD + full path (used to keep the OpenAPI document complete). */
 export function listRoutes(): { method: string; path: string }[] {

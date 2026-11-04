@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import * as svc from './attendance.service.js';
+import * as svc from '../services/attendance.service.js';
 
 export const today = async (req: Request, res: Response) => res.json({ data: await svc.today(req.auth!) });
 export const checkIn = async (req: Request, res: Response) => res.status(201).json({ data: await svc.checkIn(req.auth!, req.ip) });

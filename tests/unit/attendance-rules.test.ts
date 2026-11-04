@@ -1,4 +1,4 @@
-import { evaluateCheckIn, evaluateCheckOut } from '../../src/modules/attendance/attendance.rules.js';
+import { evaluateCheckIn, evaluateCheckOut } from '../../src/services/attendance.rules.js';
 
 const S = { workStart: '08:00', workEnd: '17:00', lateGraceMinutes: 15, halfDayMinutes: 240 };
 // 08:10 Vientiane = 01:10 UTC

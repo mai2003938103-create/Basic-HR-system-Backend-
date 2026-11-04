@@ -1,13 +1,11 @@
-import { and, eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
+import { toDateString } from '../../src/models/mappers.js';
 import { signAccessToken } from '../../src/utils/jwt.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createDepartment, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');
-const typeId = async (code: string) => (await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, code)))[0].id;
+const typeId = async (code: string) => (await db.leaveType.findUniqueOrThrow({ where: { code } })).id;
 const tok = (u: { user: { id: string } }) => signAccessToken({ sub: u.user.id });
 
 async function team() {
@@ -37,7 +35,7 @@ describe('leave', () => {
     const res = await request(tok(emp), { leaveTypeId: await typeId('ANNUAL'), startDate: '2026-11-10', endDate: '2026-11-12', reason: 'ພັກຜ່ອນ' });
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ status: 'pending', days: 3 });
-    const [note] = await db.select().from(s.notifications).where(eq(s.notifications.userId, mgr.user.id));
+    const note = (await db.notification.findFirst({ where: { userId: mgr.user.id } }))!;
     expect(note.type).toBe('leave.requested');
 
     const ok = await testApp().put(`/api/leave-requests/${res.body.data.id}/approve`).set(auth(tok(mgr))).send({});
@@ -46,9 +44,9 @@ describe('leave', () => {
     const bal = await testApp().get(`/api/leave-balances?year=2026`).set(auth(tok(emp)));
     const annual = bal.body.data.find((b: any) => b.leaveType.code === 'ANNUAL');
     expect(annual).toMatchObject({ entitledDays: 15, usedDays: 3, remainingDays: 12 });
-    const rows = await db.select().from(s.attendance).where(eq(s.attendance.employeeId, emp.employee!.id));
-    expect(rows.map((r) => [r.workDate, r.status]).sort()).toEqual([['2026-11-10', 'leave'], ['2026-11-11', 'leave'], ['2026-11-12', 'leave']]);
-    const notes = await db.select().from(s.notifications).where(eq(s.notifications.userId, emp.user.id));
+    const rows = await db.attendance.findMany({ where: { employeeId: emp.employee!.id } });
+    expect(rows.map((r) => [toDateString(r.workDate), r.status]).sort()).toEqual([['2026-11-10', 'leave'], ['2026-11-11', 'leave'], ['2026-11-12', 'leave']]);
+    const notes = await db.notification.findMany({ where: { userId: emp.user.id } });
     expect(notes.map((n) => n.type)).toContain('leave.approved');
   });
 
@@ -109,7 +107,7 @@ describe('leave', () => {
     const emp = await createUser({ role: 'employee', departmentId: d.id });
     const hr = await createUser({ role: 'hr_admin' });
     await request(tok(emp), { leaveTypeId: await typeId('ANNUAL'), startDate: '2026-11-10', endDate: '2026-11-10', reason: 'x' });
-    const notes = await db.select().from(s.notifications).where(eq(s.notifications.userId, hr.user.id));
+    const notes = await db.notification.findMany({ where: { userId: hr.user.id } });
     expect(notes.map((n) => n.type)).toContain('leave.requested');
   });
 
@@ -123,7 +121,7 @@ describe('leave', () => {
     expect((await testApp().put(`/api/leave-requests/${a.id}/cancel`).set(auth(tok(emp)))).status).toBe(200);
     const bal = (await testApp().get('/api/leave-balances?year=2026').set(auth(tok(emp)))).body.data.find((b: any) => b.leaveType.code === 'ANNUAL');
     expect(bal.usedDays).toBe(0);
-    expect(await db.$count(s.attendance, and(eq(s.attendance.employeeId, emp.employee!.id), eq(s.attendance.status, 'leave')))).toBe(0);
+    expect(await db.attendance.count({ where: { employeeId: emp.employee!.id, status: 'leave' } })).toBe(0);
   });
 
   it('does not cancel approved leave that has started', async () => {
@@ -166,5 +164,18 @@ describe('leave', () => {
     const res = await testApp().put(`/api/leave-balances/${bal.id}`).set(auth(tok(hr))).send({ entitledDays: 18 });
     expect(res.body.data).toMatchObject({ entitledDays: 18, remainingDays: 18 });
     expect((await testApp().put(`/api/leave-balances/${bal.id}`).set(auth(tok(emp))).send({ entitledDays: 99 })).status).toBe(403);
+  });
+
+  it('returns half days and balances as numbers (Review Focus 3)', async () => {
+    const { mgr, emp } = await team();
+    const res = await request(tok(emp), { leaveTypeId: await typeId('ANNUAL'), startDate: '2026-11-10', endDate: '2026-11-10', halfDay: 'afternoon', reason: 'ໝໍ' });
+    expect(res.status).toBe(201);
+    await testApp().put(`/api/leave-requests/${res.body.data.id}/approve`).set(auth(tok(mgr))).send({}).expect(200);
+    const got = (await testApp().get(`/api/leave-requests/${res.body.data.id}`).set(auth(tok(emp)))).body.data;
+    expect(got.days).toBe(0.5);
+    const annual = (await testApp().get('/api/leave-balances?year=2026').set(auth(tok(emp)))).body.data.find((b: any) => b.leaveType.code === 'ANNUAL');
+    expect(annual).toEqual(expect.objectContaining({ entitledDays: 15, usedDays: 0.5, remainingDays: 14.5 }));
+    expect(typeof annual.usedDays).toBe('number');
+    expect(typeof annual.leaveType.defaultDaysPerYear).toBe('number');
   });
 });

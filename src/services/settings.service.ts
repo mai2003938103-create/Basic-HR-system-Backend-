@@ -1,15 +1,13 @@
-import { and, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../../db/client.js';
-import * as s from '../../db/schema.js';
-import { mergePayrollConfig } from '../payroll/config.js';
+import { findSettings, holidayDates, type SettingsRow } from '../models/settings.model.js';
+import { mergePayrollConfig } from '../modules/payroll/config.js';
 
-export type Settings = typeof s.companySettings.$inferSelect;
+export type Settings = SettingsRow;
 let cache: { value: Settings; at: number } | undefined;
 const TTL = 60_000;
 
 export async function getSettings(): Promise<Settings> {
   if (cache && Date.now() - cache.at < TTL && process.env.NODE_ENV !== 'test') return cache.value;
-  const [row] = await db.select().from(s.companySettings).where(eq(s.companySettings.id, 1));
+  const row = await findSettings();
   if (!row) throw new Error('company_settings row missing — run the seed');
   cache = { value: row, at: Date.now() };
   return row;
@@ -41,6 +39,5 @@ export async function publicSettings() {
 
 /** Holiday dates between two YYYY-MM-DD dates (inclusive). */
 export async function holidaySet(from: string, to: string): Promise<Set<string>> {
-  const rows = await db.select({ date: s.holidays.date }).from(s.holidays).where(and(gte(s.holidays.date, from), lte(s.holidays.date, to)));
-  return new Set(rows.map((r) => r.date));
+  return new Set(await holidayDates(from, to));
 }

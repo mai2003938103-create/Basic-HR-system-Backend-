@@ -8,7 +8,7 @@ import { authorize } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
 import { calculatePayItem } from '../payroll/calc.js';
 import { getPayrollConfig } from '../payroll/config.js';
-import { fullSettings, invalidateSettings, publicSettings } from './settings.service.js';
+import { fullSettings, invalidateSettings, publicSettings } from '../../services/settings.service.js';
 import { companyBody, payrollBody, previewBody, workTimeBody } from './settings.schema.js';
 
 export function settingsRoutes() {

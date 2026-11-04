@@ -5,7 +5,7 @@ import type { AuthContext } from '../../utils/auth-context.js';
 import { addDays, localDate } from '../../utils/dates.js';
 import { employeeScopeWhere } from '../../utils/scope.js';
 import { isWorkingDay } from '../../utils/workdays.js';
-import { getSettings, holidaySet } from '../settings/settings.service.js';
+import { getSettings, holidaySet } from '../../services/settings.service.js';
 
 const ACTIVE = ['active', 'probation'] as const;
 const PRESENT = ['present', 'late', 'half_day'] as const;
