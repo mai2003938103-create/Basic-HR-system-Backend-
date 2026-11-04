@@ -1,8 +1,6 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
+import { fromDateString as day } from '../../src/models/mappers.js';
 import { signAccessToken } from '../../src/utils/jwt.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createDepartment, createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
@@ -25,16 +23,20 @@ describe('dashboard', () => {
     const b = await createEmployee({ departmentId: d1.id });
     await createEmployee({ departmentId: d1.id, employmentStatus: 'inactive' });
     const c = await createEmployee({ departmentId: d2.id });
-    await db.insert(s.attendance).values([
-      { employeeId: mgr.employee!.id, workDate: TODAY, status: 'present', checkInAt: new Date() },
-      { employeeId: a.id, workDate: TODAY, status: 'late', checkInAt: new Date() },
-      { employeeId: c.id, workDate: TODAY, status: 'present', checkInAt: new Date() },
-    ]);
-    const [lt] = await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, 'ANNUAL'));
-    await db.insert(s.leaveRequests).values([
-      { employeeId: b.id, leaveTypeId: lt.id, startDate: TODAY, endDate: TODAY, days: '1', reason: 'x', status: 'approved' },
-      { employeeId: a.id, leaveTypeId: lt.id, startDate: '2026-11-20', endDate: '2026-11-20', days: '1', reason: 'x', status: 'pending' },
-    ]);
+    await db.attendance.createMany({
+      data: [
+        { employeeId: mgr.employee!.id, workDate: day(TODAY), status: 'present', checkInAt: new Date() },
+        { employeeId: a.id, workDate: day(TODAY), status: 'late', checkInAt: new Date() },
+        { employeeId: c.id, workDate: day(TODAY), status: 'present', checkInAt: new Date() },
+      ],
+    });
+    const lt = await db.leaveType.findUniqueOrThrow({ where: { code: 'ANNUAL' } });
+    await db.leaveRequest.createMany({
+      data: [
+        { employeeId: b.id, leaveTypeId: lt.id, startDate: day(TODAY), endDate: day(TODAY), days: '1', reason: 'x', status: 'approved' },
+        { employeeId: a.id, leaveTypeId: lt.id, startDate: day('2026-11-20'), endDate: day('2026-11-20'), days: '1', reason: 'x', status: 'pending' },
+      ],
+    });
     return { mgr, hr };
   }
 

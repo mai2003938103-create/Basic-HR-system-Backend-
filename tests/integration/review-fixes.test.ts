@@ -1,14 +1,12 @@
 import request from 'supertest';
-import { and, eq } from 'drizzle-orm';
 import { createApp } from '../../src/app.js';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
+import { fromDateString as day } from '../../src/models/mappers.js';
 import { signAccessToken } from '../../src/utils/jwt.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
-const typeId = async (code: string) => (await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, code)))[0].id;
+const typeId = async (code: string) => (await db.leaveType.findUniqueOrThrow({ where: { code } })).id;
 const tok = (u: { user: { id: string } }) => signAccessToken({ sub: u.user.id });
 const cookieOf = (res: request.Response) => (res.headers['set-cookie'] as unknown as string[] | undefined)?.find((c) => c.startsWith('hrms_rt='))?.split(';')[0];
 
@@ -42,11 +40,10 @@ describe('final review fixes', () => {
   });
 
   it('keeps the last active super admin even for a super admin caller', async () => {
-    const [seeded] = await db.select().from(s.users).where(eq(s.users.email, process.env.ADMIN_EMAIL!));
-    await db.update(s.users).set({ isActive: false }).where(eq(s.users.id, seeded.id));
+    await db.user.update({ where: { email: process.env.ADMIN_EMAIL! }, data: { isActive: false } });
     const sa = await createUser({ role: 'super_admin' });
     const other = await createUser({ role: 'super_admin', withEmployee: false });
-    await db.update(s.users).set({ isActive: false }).where(eq(s.users.id, other.user.id));
+    await db.user.update({ where: { id: other.user.id }, data: { isActive: false } });
     const res = await testApp().patch(`/api/employees/${sa.employee!.id}/status`).set(auth(tok(sa))).send({ status: 'terminated' });
     expect(res.status).toBe(409);
   });
@@ -54,9 +51,9 @@ describe('final review fixes', () => {
   it('does not re-enable a disabled login on an unrelated status change', async () => {
     const hr = await createUser({ role: 'hr_admin' });
     const u = await createUser({ role: 'employee', employee: { employmentStatus: 'probation' } });
-    await db.update(s.users).set({ isActive: false }).where(eq(s.users.id, u.user.id));
+    await db.user.update({ where: { id: u.user.id }, data: { isActive: false } });
     await testApp().patch(`/api/employees/${u.employee!.id}/status`).set(auth(tok(hr))).send({ status: 'active' });
-    const [after] = await db.select().from(s.users).where(eq(s.users.id, u.user.id));
+    const after = await db.user.findUniqueOrThrow({ where: { id: u.user.id } });
     expect(after.isActive).toBe(false);
   });
 
@@ -66,9 +63,9 @@ describe('final review fixes', () => {
     const r = await testApp().post('/api/leave-requests').set(auth(tok(emp)))
       .field('leaveTypeId', await typeId('ANNUAL')).field('startDate', '2026-11-16').field('endDate', '2026-11-20').field('reason', 'x');
     await testApp().put(`/api/leave-requests/${r.body.data.id}/approve`).set(auth(tok(mgr))).send({});
-    await db.insert(s.holidays).values({ date: '2026-11-18', nameLo: 'x', nameEn: 'x' });
+    await db.holiday.create({ data: { date: day('2026-11-18'), nameLo: 'x', nameEn: 'x' } });
     expect((await testApp().put(`/api/leave-requests/${r.body.data.id}/cancel`).set(auth(tok(emp)))).status).toBe(200);
-    const [b] = await db.select().from(s.leaveBalances).where(and(eq(s.leaveBalances.employeeId, emp.employee!.id), eq(s.leaveBalances.year, 2026)));
+    const b = (await db.leaveBalance.findFirst({ where: { employeeId: emp.employee!.id, year: 2026, leaveType: { code: 'ANNUAL' } } }))!;
     expect(Number(b.usedDays)).toBe(0);
   });
 
