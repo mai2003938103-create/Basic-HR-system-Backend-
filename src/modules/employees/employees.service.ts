@@ -50,10 +50,11 @@ async function loadExtras(rows: EmployeeRow[]) {
 }
 
 function toDto(auth: AuthContext, r: EmployeeRow, x: Awaited<ReturnType<typeof loadExtras>>) {
-  const { searchText: _s, basicSalary, ...rest } = r;
+  const { searchText: _s, basicSalary, bankName, bankAccount, endDate, ...rest } = r;
   return {
     ...rest,
-    ...(canSeeSalary(auth, r.id) ? { basicSalary } : {}),
+    // Pay and bank details follow the salary rule (spec §6).
+    ...(canSeeSalary(auth, r.id) ? { basicSalary, bankName, bankAccount, endDate } : {}),
     department: x.depts.get(r.departmentId) ?? null,
     position: x.positions.get(r.positionId) ?? null,
     user: x.users.get(r.id) ?? null,

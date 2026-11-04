@@ -1,6 +1,7 @@
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import * as s from '../../db/schema.js';
+import { mergePayrollConfig } from '../payroll/config.js';
 
 export type Settings = typeof s.companySettings.$inferSelect;
 let cache: { value: Settings; at: number } | undefined;
@@ -17,6 +18,12 @@ export async function getSettings(): Promise<Settings> {
 export const invalidateSettings = () => {
   cache = undefined;
 };
+
+/** Everything HR can edit; payroll rules are merged over the defaults. */
+export async function fullSettings() {
+  const { payrollConfig, notificationConfig: _n, createdAt: _c, updatedAt: _u, id: _id, ...rest } = await getSettings();
+  return { ...rest, payroll: mergePayrollConfig(payrollConfig) };
+}
 
 export async function publicSettings() {
   const st = await getSettings();

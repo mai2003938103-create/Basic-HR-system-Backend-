@@ -9,6 +9,9 @@ import { createUserBody, listUsersQuery, updateUserBody, userStatusBody } from '
 import { editAttendanceBody, exportAttendanceQuery, listAttendanceQuery } from '../modules/attendance/attendance.schema.js';
 import { approveBody, balanceUpdateBody, balancesQuery, createLeaveBody, listLeaveQuery, rejectBody } from '../modules/leave/leave.schema.js';
 
+import { companyBody, payrollBody, previewBody, workTimeBody } from '../modules/settings/settings.schema.js';
+import { allowanceTypeBody, employeeAllowancesBody } from '../modules/allowances/allowances.routes.js';
+
 extendZodWithOpenApi(z);
 
 type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -101,6 +104,18 @@ const OPS: Op[] = [
   { method: 'put', path: '/api/notifications/:id/read', tag: 'Notifications', summary: 'Mark one as read' },
   { method: 'get', path: '/api/dashboard/summary', tag: 'Dashboard', summary: 'Headline numbers in scope', permission: 'dashboard.view' },
   { method: 'get', path: '/api/dashboard/charts', tag: 'Dashboard', summary: 'Chart series in scope', permission: 'dashboard.view' },
+
+  { method: 'get', path: '/api/settings', tag: 'Settings', summary: 'All company settings including payroll rules', permission: 'settings.manage' },
+  { method: 'put', path: '/api/settings/company', tag: 'Settings', summary: 'Company name, address, tax ID and currency', permission: 'settings.manage', body: companyBody },
+  { method: 'put', path: '/api/settings/work-time', tag: 'Settings', summary: 'Working days and hours', permission: 'settings.manage', body: workTimeBody },
+  { method: 'put', path: '/api/settings/payroll', tag: 'Settings', summary: 'Payroll rules (saving clears the confirmation)', permission: 'settings.manage', body: payrollBody },
+  { method: 'post', path: '/api/settings/payroll/preview', tag: 'Settings', summary: 'Calculate one salary with the current rules', permission: 'settings.manage', body: previewBody },
+  { method: 'post', path: '/api/settings/payroll/confirm', tag: 'Settings', summary: 'Mark the payroll rules as confirmed by the company', permission: 'settings.manage' },
+  { method: 'get', path: '/api/allowance-types', tag: 'Payroll', summary: 'List allowance types', permission: 'payroll.read' },
+  { method: 'post', path: '/api/allowance-types', tag: 'Payroll', summary: 'Create an allowance type', permission: 'settings.manage', body: allowanceTypeBody, status: 201 },
+  { method: 'put', path: '/api/allowance-types/:id', tag: 'Payroll', summary: 'Update an allowance type', permission: 'settings.manage', body: allowanceTypeBody.partial() },
+  { method: 'get', path: '/api/employees/:id/allowances', tag: 'Payroll', summary: "An employee's monthly allowances", permission: 'payroll.read' },
+  { method: 'put', path: '/api/employees/:id/allowances', tag: 'Payroll', summary: "Replace an employee's allowances (amount 0 removes)", permission: 'payroll.manage', body: employeeAllowancesBody },
 ];
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string(), details: z.array(z.object({ field: z.string(), message: z.string() })).optional() }) });

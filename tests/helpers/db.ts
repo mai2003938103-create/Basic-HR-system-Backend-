@@ -6,6 +6,7 @@ const TABLES = [
   'notifications', 'audit_logs', 'refresh_tokens', 'leave_requests', 'leave_balances', 'attendance',
   'user_roles', 'role_permissions', 'users', 'departments', 'positions', 'employees', 'holidays',
   'leave_types', 'roles', 'permissions', 'company_settings',
+  'pay_run_events', 'pay_items', 'pay_runs', 'employee_allowances', 'allowance_types',
 ];
 
 export async function resetDb(): Promise<void> {

@@ -21,6 +21,7 @@ import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
 import { leaveBalanceRoutes, leaveRoutes } from './modules/leave/leave.routes.js';
 import { notificationRoutes } from './modules/notifications/notifications.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
+import { allowanceTypeRoutes } from './modules/allowances/allowances.routes.js';
 
 const MOUNTS: [string, () => Router][] = [
   ['/api/auth', authRoutes],
@@ -39,6 +40,7 @@ const MOUNTS: [string, () => Router][] = [
   ['/api/leave-balances', leaveBalanceRoutes],
   ['/api/notifications', notificationRoutes],
   ['/api/dashboard', dashboardRoutes],
+  ['/api/allowance-types', allowanceTypeRoutes],
 ];
 
 /** Every API route as METHOD + full path (used to keep the OpenAPI document complete). */

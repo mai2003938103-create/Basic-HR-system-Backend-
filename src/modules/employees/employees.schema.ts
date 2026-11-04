@@ -35,6 +35,8 @@ const fields = {
   emergencyContactPhone: phone.nullish().or(z.literal('')).transform((v) => (v ? v : null)),
   emergencyContactRelation: optionalText,
   endDate: isoDate.nullish(),
+  bankName: optionalText,
+  bankAccount: z.string().trim().max(40).regex(/^[0-9A-Za-z\- ]*$/, 'errors.validation.bankAccount').nullish().transform((v) => (v ? v : null)),
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
