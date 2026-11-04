@@ -1,15 +1,13 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { buildInputs, periodBounds } from '../../src/modules/payroll/inputs.js';
+import { fromDateString as day } from '../../src/models/mappers.js';
+import { buildInputs, periodBounds } from '../../src/services/payroll/inputs.js';
 import { localIso } from '../helpers/time.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
-const typeId = async (code: string) => (await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.code, code)))[0].id;
-const leave = async (employeeId: string, code: string, startDate: string, endDate: string, extra: Partial<typeof s.leaveRequests.$inferInsert> = {}) =>
-  db.insert(s.leaveRequests).values({ employeeId, leaveTypeId: await typeId(code), startDate, endDate, days: '1', reason: 'x', status: 'approved', ...extra });
+const typeId = async (code: string) => (await db.leaveType.findUniqueOrThrow({ where: { code } })).id;
+const leave = async (employeeId: string, code: string, startDate: string, endDate: string, extra: { halfDay?: 'none' | 'morning' | 'afternoon'; days?: string; status?: 'pending' | 'approved' } = {}) =>
+  db.leaveRequest.create({ data: { employeeId, leaveTypeId: await typeId(code), startDate: day(startDate), endDate: day(endDate), days: '1', reason: 'x', status: 'approved', ...extra } });
 
 describe('payroll inputs', () => {
   beforeEach(async () => {
@@ -44,18 +42,18 @@ describe('payroll inputs', () => {
 
   it('splits overtime into weekday and rest-day minutes and caps the month', async () => {
     const e = await createEmployee();
-    const row = (workDate: string, overtimeMinutes: number) => ({ employeeId: e.id, workDate, status: 'present' as const, overtimeMinutes, checkInAt: new Date(localIso(workDate, '08:00')) });
-    await db.insert(s.attendance).values([row('2026-11-03', 90), row('2026-11-04', 30), row('2026-11-07', 240)]);
+    const row = (workDate: string, overtimeMinutes: number) => ({ employeeId: e.id, workDate: day(workDate), status: 'present' as const, overtimeMinutes, checkInAt: new Date(localIso(workDate, '08:00')) });
+    await db.attendance.createMany({ data: [row('2026-11-03', 90), row('2026-11-04', 30), row('2026-11-07', 240)] });
     expect((await buildInputs(db, '2026-11')).get(e.id)!).toMatchObject({ overtimeMinutesWeekday: 120, overtimeMinutesRestday: 240 });
-    await db.update(s.companySettings).set({ payrollConfig: { overtime: { maxMinutesPerMonth: 200 } } });
+    await db.companySettings.update({ where: { id: 1 }, data: { payrollConfig: { overtime: { maxMinutesPerMonth: 200 } } } });
     expect((await buildInputs(db, '2026-11')).get(e.id)!).toMatchObject({ overtimeMinutesWeekday: 120, overtimeMinutesRestday: 80 });
   });
 
   it('copies active allowances and leaves out ended employees', async () => {
     const e = await createEmployee();
     const gone = await createEmployee({ employmentStatus: 'terminated', endDate: '2026-10-31' });
-    const [meal] = await db.select().from(s.allowanceTypes).where(eq(s.allowanceTypes.code, 'MEAL'));
-    await db.insert(s.employeeAllowances).values({ employeeId: e.id, allowanceTypeId: meal.id, amount: 300000 });
+    const meal = await db.allowanceType.findUniqueOrThrow({ where: { code: 'MEAL' } });
+    await db.employeeAllowance.create({ data: { employeeId: e.id, allowanceTypeId: meal.id, amount: 300000 } });
     const map = await buildInputs(db, '2026-11');
     expect(map.get(e.id)!.allowances).toEqual([{ typeId: meal.id, code: 'MEAL', nameLo: meal.nameLo, nameEn: meal.nameEn, amount: 300000, taxable: true }]);
     expect(map.has(gone.id)).toBe(false);
@@ -73,9 +71,9 @@ describe('payroll inputs', () => {
       const hr = await createUser({ role: 'hr_admin' });
       const e = await createEmployee();
       await testApp().patch(`/api/employees/${e.id}/status`).set(auth(hr.token)).send({ status: 'terminated' }).expect(200);
-      expect((await db.select().from(s.employees).where(eq(s.employees.id, e.id)))[0].endDate).toBe('2026-11-13');
+      expect((await db.employee.findUniqueOrThrow({ where: { id: e.id } })).endDate).toEqual(day('2026-11-13'));
       await testApp().patch(`/api/employees/${e.id}/status`).set(auth(hr.token)).send({ status: 'active' }).expect(200);
-      expect((await db.select().from(s.employees).where(eq(s.employees.id, e.id)))[0].endDate).toBeNull();
+      expect((await db.employee.findUniqueOrThrow({ where: { id: e.id } })).endDate).toBeNull();
     } finally {
       vi.useRealTimers();
     }

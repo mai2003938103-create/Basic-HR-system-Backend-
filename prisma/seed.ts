@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { pathToFileURL } from 'node:url';
 import type { Db } from '../src/models/prisma.js';
 import { ALLOWANCE_TYPES, DEFAULT_SETTINGS, LEAVE_TYPES, PERMISSIONS, ROLES } from './seed-data.js';
-import { DEFAULT_PAYROLL_CONFIG } from '../src/modules/payroll/config.js';
+import { DEFAULT_PAYROLL_CONFIG } from '../src/services/payroll/config.js';
 
 const isEmptyObject = (v: unknown) => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0;
 

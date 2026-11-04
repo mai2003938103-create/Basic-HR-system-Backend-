@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { optionalText, requiredText } from '../../utils/http.js';
-import { payrollConfigSchema } from '../payroll/config.js';
+import { optionalText, requiredText } from '../utils/http.js';
+import { payrollConfigSchema } from '../services/payroll/config.js';
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'errors.validation.time');
 const toMinutes = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3));

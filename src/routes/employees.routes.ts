@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as c from '../controllers/employees.controller.js';
+import { attachEmployeeAllowances } from './allowances.routes.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { authorize } from '../middlewares/authorize.js';
 import { validate } from '../middlewares/validate.js';
@@ -19,6 +20,7 @@ export function employeeRoutes() {
   r.delete('/:id', authorize('employee.delete'), validate({ params: idParams }), c.remove);
   r.patch('/:id/status', authorize('employee.update'), validate({ params: idParams, body: statusBody }), c.setStatus);
   r.post('/:id/photo', authorize('employee.update'), validate({ params: idParams }), imageUpload.single('photo'), c.uploadPhoto);
+  attachEmployeeAllowances(r);
   return r;
 }
 

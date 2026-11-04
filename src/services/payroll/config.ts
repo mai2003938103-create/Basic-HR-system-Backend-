@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getSettings } from '../../services/settings.service.js';
+import { getSettings } from '../settings.service.js';
 
 const bracket = z.object({ upTo: z.number().int().positive().nullable(), rate: z.number().min(0).max(100) });
 

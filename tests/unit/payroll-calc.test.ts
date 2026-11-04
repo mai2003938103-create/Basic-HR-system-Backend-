@@ -1,5 +1,5 @@
-import { DEFAULT_PAYROLL_CONFIG as cfg } from '../../src/modules/payroll/config.js';
-import { NegativeNetError, calculatePayItem, mulDivRound, pct, type PayInput } from '../../src/modules/payroll/calc.js';
+import { DEFAULT_PAYROLL_CONFIG as cfg } from '../../src/services/payroll/config.js';
+import { NegativeNetError, calculatePayItem, mulDivRound, pct, type PayInput } from '../../src/services/payroll/calc.js';
 
 const base: PayInput = {
   basic: 0, periodWorkDays: 22, paidWorkDays: 22, allowances: [], overtimeMinutesWeekday: 0, overtimeMinutesRestday: 0, bonus: 0, otherDeduction: 0, unpaidDays: 0,

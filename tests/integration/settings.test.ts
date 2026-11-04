@@ -1,4 +1,4 @@
-import { DEFAULT_PAYROLL_CONFIG } from '../../src/modules/payroll/config.js';
+import { DEFAULT_PAYROLL_CONFIG } from '../../src/services/payroll/config.js';
 import { resetDb } from '../helpers/db.js';
 import { createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';

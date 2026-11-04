@@ -1,11 +1,8 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../../src/db/client.js';
-import * as s from '../../src/db/schema.js';
-import { resetDb } from '../helpers/db.js';
+import { prisma as db, resetDb } from '../helpers/db.js';
 import { createDepartment, createEmployee, createUser } from '../helpers/factory.js';
 import { auth, testApp } from '../helpers/app.js';
 
-const typeOf = async (code: string) => (await db.select().from(s.allowanceTypes).where(eq(s.allowanceTypes.code, code)))[0];
+const typeOf = async (code: string) => db.allowanceType.findUniqueOrThrow({ where: { code } });
 
 describe('allowances', () => {
   let hr: string;
@@ -44,9 +41,9 @@ describe('allowances', () => {
     const manager = await createUser({ role: 'manager' });
     await testApp().get(`/api/employees/${other.id}/allowances`).set(auth(manager.token)).expect(403);
     // A department-scoped role that may read payroll still only sees its own department.
-    const [mgrRole] = await db.select().from(s.roles).where(eq(s.roles.code, 'manager'));
-    const [perm] = await db.select().from(s.permissions).where(eq(s.permissions.code, 'payroll.read'));
-    await db.insert(s.rolePermissions).values({ roleId: mgrRole.id, permissionId: perm.id });
+    const mgrRole = await db.role.findUniqueOrThrow({ where: { code: 'manager' } });
+    const perm = await db.permission.findUniqueOrThrow({ where: { code: 'payroll.read' } });
+    await db.rolePermission.create({ data: { roleId: mgrRole.id, permissionId: perm.id } });
     await testApp().get(`/api/employees/${other.id}/allowances`).set(auth(manager.token)).expect(404);
     const own = await createEmployee({ departmentId: manager.employee!.departmentId });
     await testApp().get(`/api/employees/${own.id}/allowances`).set(auth(manager.token)).expect(200);

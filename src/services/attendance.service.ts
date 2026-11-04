@@ -4,7 +4,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import * as attendance from '../models/attendance.model.js';
 import { fromDateString } from '../models/mappers.js';
 import { prisma } from '../models/prisma.js';
-import { getPayrollConfig } from '../modules/payroll/config.js';
+import { getPayrollConfig } from './payroll/config.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { TZ, localDate } from '../utils/dates.js';
