@@ -12,6 +12,7 @@ import { canAccessEmployee, employeeScopeWhere } from '../../lib/scope.js';
 import { isWorkingDay } from '../../lib/workdays.js';
 import { getSettings, holidaySet } from '../settings/settings.service.js';
 import { evaluateCheckIn, evaluateCheckOut } from './attendance.rules.js';
+import { getPayrollConfig } from '../payroll/config.js';
 import type { editAttendanceBody, exportAttendanceQuery, listAttendanceQuery } from './attendance.schema.js';
 
 type Row = typeof s.attendance.$inferSelect;
@@ -73,7 +74,7 @@ export async function checkOut(auth: AuthContext) {
   if (!rec?.checkInAt) throw badRequest('errors.attendance.notCheckedIn');
   if (rec.checkOutAt) throw conflict('errors.attendance.alreadyCheckedOut');
   const { st, working } = await workingDayInfo(date);
-  const ev = evaluateCheckOut(rec.checkInAt, now, st, rec.status === 'late' ? 'late' : 'present', working);
+  const ev = evaluateCheckOut(rec.checkInAt, now, st, rec.status === 'late' ? 'late' : 'present', working, (await getPayrollConfig()).overtime.thresholdMinutes);
   const [updated] = await db
     .update(s.attendance)
     .set({ checkOutAt: now, ...ev })
@@ -157,8 +158,8 @@ export async function edit(auth: AuthContext, id: string, body: z.infer<typeof e
   let derived: Partial<Row> = {};
   if (checkInAt) {
     const ci = evaluateCheckIn(checkInAt, st, working);
-    derived = { status: ci.status, lateMinutes: ci.lateMinutes, workedMinutes: 0, earlyLeaveMinutes: 0 };
-    if (checkOutAt) derived = { ...derived, ...evaluateCheckOut(checkInAt, checkOutAt, st, ci.status, working) };
+    derived = { status: ci.status, lateMinutes: ci.lateMinutes, workedMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0 };
+    if (checkOutAt) derived = { ...derived, ...evaluateCheckOut(checkInAt, checkOutAt, st, ci.status, working, (await getPayrollConfig()).overtime.thresholdMinutes) };
   }
   const set = { checkInAt, checkOutAt, ...derived, ...(body.status ? { status: body.status } : {}), note: body.note };
   const [after] = await db.update(s.attendance).set(set).where(eq(s.attendance.id, id)).returning();

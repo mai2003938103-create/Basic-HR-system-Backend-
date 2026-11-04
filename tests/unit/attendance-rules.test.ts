@@ -21,12 +21,20 @@ describe('attendance rules', () => {
     expect(evaluateCheckIn(new Date('2026-11-02T23:30:00Z'), S).workDate).toBe('2026-11-03');
   });
   it('computes worked and early-leave minutes', () => {
-    expect(evaluateCheckOut(at('08:00'), at('16:30'), S, 'present')).toEqual({ workedMinutes: 510, earlyLeaveMinutes: 30, status: 'present' });
+    expect(evaluateCheckOut(at('08:00'), at('16:30'), S, 'present')).toEqual({ workedMinutes: 510, earlyLeaveMinutes: 30, status: 'present', overtimeMinutes: 0 });
   });
   it('keeps late status on a full day', () => {
-    expect(evaluateCheckOut(at('08:20'), at('17:05'), S, 'late')).toEqual({ workedMinutes: 525, earlyLeaveMinutes: 0, status: 'late' });
+    expect(evaluateCheckOut(at('08:20'), at('17:05'), S, 'late')).toEqual({ workedMinutes: 525, earlyLeaveMinutes: 0, status: 'late', overtimeMinutes: 0 });
   });
   it('marks a short day as half day', () => {
     expect(evaluateCheckOut(at('08:00'), at('11:00'), S, 'present').status).toBe('half_day');
+  });
+
+  it('counts overtime after work end beyond the threshold on a working day', () => {
+    expect(evaluateCheckOut(at('08:00'), at('18:00'), S, 'present', true, 30).overtimeMinutes).toBe(30);
+    expect(evaluateCheckOut(at('08:00'), at('17:20'), S, 'present', true, 30).overtimeMinutes).toBe(0);
+  });
+  it('counts every worked minute as overtime on a non-working day', () => {
+    expect(evaluateCheckOut(at('09:00', '2026-11-07'), at('13:00', '2026-11-07'), S, 'present', false, 30).overtimeMinutes).toBe(240);
   });
 });

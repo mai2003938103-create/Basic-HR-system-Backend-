@@ -15,15 +15,19 @@ export function evaluateCheckIn(at: Date, s: RuleSettings, isWorkingDay = true) 
   return { workDate, status: (late ? 'late' : 'present') as 'present' | 'late', lateMinutes: late ? minutes - start : 0 };
 }
 
-export function evaluateCheckOut(checkInAt: Date, at: Date, s: RuleSettings, status: 'present' | 'late' | 'half_day', isWorkingDay = true) {
+export function evaluateCheckOut(checkInAt: Date, at: Date, s: RuleSettings, status: 'present' | 'late' | 'half_day', isWorkingDay = true, thresholdMinutes = 30) {
   const workedMinutes = Math.max(0, Math.floor((at.getTime() - checkInAt.getTime()) / 60000));
   const end = parseHHmm(s.workEnd);
   const sameDay = localDate(at) === localDate(checkInAt);
   const earlyLeaveMinutes = isWorkingDay && sameDay ? Math.max(0, end - localMinutes(at)) : 0;
   const base = status === 'half_day' ? 'present' : status;
+  // Working day: minutes after work end beyond the threshold. Rest day or holiday: every minute worked.
+  const afterEnd = sameDay ? localMinutes(at) - end : workedMinutes;
+  const overtimeMinutes = isWorkingDay ? Math.max(0, afterEnd - thresholdMinutes) : workedMinutes;
   return {
     workedMinutes,
     earlyLeaveMinutes,
     status: (workedMinutes < s.halfDayMinutes ? 'half_day' : base) as 'present' | 'late' | 'half_day',
+    overtimeMinutes,
   };
 }

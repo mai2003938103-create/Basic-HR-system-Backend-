@@ -34,6 +34,7 @@ const fields = {
   emergencyContactName: optionalText,
   emergencyContactPhone: phone.nullish().or(z.literal('')).transform((v) => (v ? v : null)),
   emergencyContactRelation: optionalText,
+  endDate: isoDate.nullish(),
 };
 
 const today = () => new Date().toISOString().slice(0, 10);

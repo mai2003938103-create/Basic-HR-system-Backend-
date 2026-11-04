@@ -6,6 +6,7 @@ import type { AuthContext } from '../../lib/auth-context.js';
 import { audit } from '../../lib/audit.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
 import { likeEscape } from '../../lib/http.js';
+import { localDate } from '../../lib/dates.js';
 import { page, toPaging } from '../../lib/list-query.js';
 import { hashPassword } from '../../lib/password.js';
 import { canAccessEmployee, employeeScopeWhere } from '../../lib/scope.js';
@@ -131,7 +132,9 @@ export async function setStatus(auth: AuthContext, id: string, status: z.infer<t
       if (!auth.permissions.has('role.manage')) throw forbidden();
       if (INACTIVE.has(status)) await assertOtherSuperAdmin(tx, linked.id);
     }
-    await tx.update(s.employees).set({ employmentStatus: status }).where(eq(s.employees.id, id));
+    // Termination records the last day for payroll; coming back to work clears it.
+    const endDate = status === 'terminated' ? (before.endDate ?? localDate(new Date())) : status === 'inactive' ? before.endDate : null;
+    await tx.update(s.employees).set({ employmentStatus: status, endDate }).where(eq(s.employees.id, id));
     // Leaving employment disables the login; coming back re-enables it. Other moves (probation → active)
     // leave a login that an admin disabled on purpose untouched.
     const wasInactive = INACTIVE.has(before.employmentStatus);
