@@ -1,36 +1,41 @@
 import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
 import type { Db } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { DEFAULT_SETTINGS, LEAVE_TYPES, PERMISSIONS, ROLES } from './seed-data.js';
+import { ALLOWANCE_TYPES, DEFAULT_SETTINGS, LEAVE_TYPES, PERMISSIONS, ROLES } from './seed-data.js';
+import { DEFAULT_PAYROLL_CONFIG } from '../src/modules/payroll/config.js';
 
 export async function seedBase(db: Db): Promise<void> {
-  await db.insert(s.permissions).values(PERMISSIONS).onConflictDoNothing({ target: s.permissions.code });
+  const added = new Set(
+    (await db.insert(s.permissions).values(PERMISSIONS).onConflictDoNothing({ target: s.permissions.code }).returning({ code: s.permissions.code })).map((p) => p.code),
+  );
   const allPerms = await db.select().from(s.permissions);
 
   for (const r of ROLES) {
     await db
       .insert(s.roles)
-      .values({ code: r.code, nameLo: r.nameLo, nameEn: r.nameEn, scope: r.scope, isSystem: true })
+      .values({ code: r.code, nameLo: r.nameLo, nameEn: r.nameEn, scope: r.scope, isSystem: r.system ?? true })
       .onConflictDoNothing({ target: s.roles.code });
     const [role] = await db.select().from(s.roles).where(eq(s.roles.code, r.code));
     const existing = await db.$count(s.rolePermissions, eq(s.rolePermissions.roleId, role.id));
-    // Fill a role's permissions only when it has none (super_admin always gets all),
-    // so edits made in the app survive a re-seed.
-    if (existing === 0 || r.permissions === '*') {
-      const wanted = r.permissions === '*' ? allPerms : allPerms.filter((p) => (r.permissions as string[]).includes(p.code));
-      if (wanted.length) {
-        await db
-          .insert(s.rolePermissions)
-          .values(wanted.map((p) => ({ roleId: role.id, permissionId: p.id })))
-          .onConflictDoNothing();
-      }
+    // Fill a role's permissions only when it has none (super_admin always gets all); otherwise grant only
+    // permissions created by this run (a new release), so edits made in the app survive a re-seed.
+    const listed = (p: { code: string }) => r.permissions === '*' || r.permissions.includes(p.code);
+    const wanted = existing === 0 || r.permissions === '*' ? allPerms.filter(listed) : allPerms.filter((p) => added.has(p.code) && listed(p));
+    if (wanted.length) {
+      await db
+        .insert(s.rolePermissions)
+        .values(wanted.map((p) => ({ roleId: role.id, permissionId: p.id })))
+        .onConflictDoNothing();
     }
   }
 
   await db.insert(s.leaveTypes).values(LEAVE_TYPES).onConflictDoNothing({ target: s.leaveTypes.code });
-  await db.insert(s.companySettings).values({ id: 1, ...DEFAULT_SETTINGS }).onConflictDoNothing();
+  await db.insert(s.companySettings).values({ id: 1, ...DEFAULT_SETTINGS, payrollConfig: DEFAULT_PAYROLL_CONFIG }).onConflictDoNothing();
+  // Installs from Stage 1 have an empty payroll_config: give them the general defaults once.
+  await db.update(s.companySettings).set({ payrollConfig: DEFAULT_PAYROLL_CONFIG }).where(sql`${s.companySettings.payrollConfig} = '{}'::jsonb`);
+  await db.insert(s.allowanceTypes).values(ALLOWANCE_TYPES).onConflictDoNothing({ target: s.allowanceTypes.code });
 
   const email = process.env.ADMIN_EMAIL ?? 'admin@systory.la';
   const password = process.env.ADMIN_PASSWORD ?? 'ChangeMe123';

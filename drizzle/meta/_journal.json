@@ -15,6 +15,13 @@
       "when": 1793686112198,
       "tag": "0001_review_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793798272615,
+      "tag": "0002_stage2",
+      "breakpoints": true
     }
   ]
 }

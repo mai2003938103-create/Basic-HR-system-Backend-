@@ -33,6 +33,7 @@ export const employmentStatus = pgEnum('employment_status', ['active', 'probatio
 export const attendanceStatus = pgEnum('attendance_status', ['present', 'late', 'absent', 'half_day', 'leave']);
 export const halfDay = pgEnum('half_day', ['none', 'morning', 'afternoon']);
 export const leaveStatus = pgEnum('leave_status', ['pending', 'approved', 'rejected', 'cancelled']);
+export const payRunStatus = pgEnum('pay_run_status', ['draft', 'pending', 'approved', 'paid']);
 export const tokenType = pgEnum('token_type', ['refresh', 'password_reset']);
 
 export const departments = pgTable(
@@ -93,6 +94,10 @@ export const employees = pgTable(
     emergencyContactName: text(),
     emergencyContactPhone: text(),
     emergencyContactRelation: text(),
+    bankName: text(),
+    bankAccount: text(),
+    // Set when the employee is terminated; ends payroll eligibility after this date.
+    endDate: day(),
     searchText: text().notNull().default(''),
     ...stamps,
   },
@@ -210,6 +215,7 @@ export const attendance = pgTable(
     lateMinutes: integer().notNull().default(0),
     earlyLeaveMinutes: integer().notNull().default(0),
     status: attendanceStatus().notNull(),
+    overtimeMinutes: integer().notNull().default(0),
     note: text(),
     checkInIp: text(),
     ...stamps,
@@ -306,8 +312,11 @@ export const companySettings = pgTable(
     companyNameLo: text().notNull(),
     companyNameEn: text().notNull(),
     logoUrl: text(),
-    address: text(),
+    addressLo: text(),
+    addressEn: text(),
+    taxId: text(),
     phone: text(),
+    email: text(),
     currencyCode: text().notNull().default('LAK'),
     currencySymbol: text().notNull().default('₭'),
     workingDays: integer().array().notNull(),
@@ -320,6 +329,109 @@ export const companySettings = pgTable(
     ...stamps,
   },
   (t) => [check('company_settings_single_row', sql`${t.id} = 1`)],
+);
+
+// ---- Stage 2: payroll ----
+const money = () => numeric({ precision: 14, scale: 0, mode: 'number' });
+
+export const allowanceTypes = pgTable('allowance_types', {
+  id: id(),
+  code: text().notNull().unique(),
+  nameLo: text().notNull(),
+  nameEn: text().notNull(),
+  taxable: boolean().notNull().default(true),
+  isActive: boolean().notNull().default(true),
+  ...stamps,
+});
+
+export const employeeAllowances = pgTable(
+  'employee_allowances',
+  {
+    id: id(),
+    employeeId: uuid()
+      .notNull()
+      .references(() => employees.id, { onDelete: 'cascade' }),
+    allowanceTypeId: uuid()
+      .notNull()
+      .references(() => allowanceTypes.id, { onDelete: 'restrict' }),
+    amount: money().notNull(),
+    ...stamps,
+  },
+  (t) => [uniqueIndex().on(t.employeeId, t.allowanceTypeId)],
+);
+
+export const payRuns = pgTable('pay_runs', {
+  id: id(),
+  period: text().notNull().unique(), // YYYY-MM
+  status: payRunStatus().notNull().default('draft'),
+  payDate: day().notNull(),
+  configSnapshot: jsonb(),
+  createdById: uuid().references(() => users.id, { onDelete: 'set null' }),
+  submittedById: uuid().references(() => users.id, { onDelete: 'set null' }),
+  submittedAt: tz(),
+  approvedById: uuid().references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: tz(),
+  paidById: uuid().references(() => users.id, { onDelete: 'set null' }),
+  paidAt: tz(),
+  lastReturnNote: text(),
+  ...stamps,
+});
+
+export const payItems = pgTable(
+  'pay_items',
+  {
+    id: id(),
+    payRunId: uuid()
+      .notNull()
+      .references(() => payRuns.id, { onDelete: 'cascade' }),
+    employeeId: uuid()
+      .notNull()
+      .references(() => employees.id, { onDelete: 'restrict' }),
+    // inputs
+    basic: money().notNull(),
+    periodWorkDays: integer().notNull(),
+    paidWorkDays: integer().notNull(),
+    allowances: jsonb().notNull().default([]),
+    overtimeMinutesWeekday: integer().notNull().default(0),
+    overtimeMinutesRestday: integer().notNull().default(0),
+    bonus: money().notNull().default(0),
+    otherDeduction: money().notNull().default(0),
+    unpaidDays: numeric({ precision: 4, scale: 1, mode: 'number' }).notNull().default(0),
+    note: text(),
+    manualFields: text().array().notNull().default(sql`'{}'::text[]`),
+    // results
+    basicEarned: money().notNull().default(0),
+    allowanceTotal: money().notNull().default(0),
+    overtimePay: money().notNull().default(0),
+    unpaidDeduction: money().notNull().default(0),
+    gross: money().notNull().default(0),
+    ssBase: money().notNull().default(0),
+    ssEmployee: money().notNull().default(0),
+    ssEmployer: money().notNull().default(0),
+    taxable: money().notNull().default(0),
+    incomeTax: money().notNull().default(0),
+    totalDeductions: money().notNull().default(0),
+    net: money().notNull().default(0),
+    employerCost: money().notNull().default(0),
+    result: jsonb().notNull().default({}), // full PayResult incl. taxSteps
+    ...stamps,
+  },
+  (t) => [uniqueIndex().on(t.payRunId, t.employeeId), index().on(t.employeeId)],
+);
+
+export const payRunEvents = pgTable(
+  'pay_run_events',
+  {
+    id: id(),
+    payRunId: uuid()
+      .notNull()
+      .references(() => payRuns.id, { onDelete: 'cascade' }),
+    action: text().notNull(),
+    actorId: uuid().references(() => users.id, { onDelete: 'set null' }),
+    note: text(),
+    createdAt: tz().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.payRunId, t.createdAt)],
 );
 
 // ---- relations (for the relational query API) ----
@@ -365,4 +477,13 @@ export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
   employee: one(employees, { fields: [leaveRequests.employeeId], references: [employees.id], relationName: 'requester' }),
   leaveType: one(leaveTypes, { fields: [leaveRequests.leaveTypeId], references: [leaveTypes.id] }),
   approver: one(employees, { fields: [leaveRequests.approverId], references: [employees.id], relationName: 'approver' }),
+}));
+export const payRunsRelations = relations(payRuns, ({ many }) => ({ items: many(payItems), events: many(payRunEvents) }));
+export const payItemsRelations = relations(payItems, ({ one }) => ({
+  run: one(payRuns, { fields: [payItems.payRunId], references: [payRuns.id] }),
+  employee: one(employees, { fields: [payItems.employeeId], references: [employees.id] }),
+}));
+export const payRunEventsRelations = relations(payRunEvents, ({ one }) => ({ run: one(payRuns, { fields: [payRunEvents.payRunId], references: [payRuns.id] }) }));
+export const employeeAllowancesRelations = relations(employeeAllowances, ({ one }) => ({
+  type: one(allowanceTypes, { fields: [employeeAllowances.allowanceTypeId], references: [allowanceTypes.id] }),
 }));

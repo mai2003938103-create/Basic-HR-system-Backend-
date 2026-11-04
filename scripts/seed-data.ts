@@ -15,18 +15,26 @@ export const PERMISSIONS: { code: string; module: string }[] = [
   { code: 'user.read', module: 'user' },
   { code: 'user.manage', module: 'user' },
   { code: 'role.manage', module: 'user' },
+  // Stage 2
+  { code: 'payroll.read', module: 'payroll' },
+  { code: 'payroll.manage', module: 'payroll' },
+  { code: 'payroll.approve', module: 'payroll' },
+  { code: 'payslip.self', module: 'payroll' },
+  { code: 'report.view', module: 'report' },
+  { code: 'settings.manage', module: 'settings' },
 ];
 
 export type Scope = 'all' | 'department' | 'self';
 
-export const ROLES: { code: string; nameLo: string; nameEn: string; scope: Scope; permissions: string[] | '*' }[] = [
+export const ROLES: { code: string; nameLo: string; nameEn: string; scope: Scope; permissions: string[] | '*'; system?: false }[] = [
   { code: 'super_admin', nameLo: 'ຜູ້ດູແລລະບົບສູງສຸດ', nameEn: 'Super Admin', scope: 'all', permissions: '*' },
   {
     code: 'hr_admin',
     nameLo: 'ຜູ້ດູແລຝ່າຍບຸກຄະລາກອນ',
     nameEn: 'HR Admin',
     scope: 'all',
-    permissions: PERMISSIONS.map((p) => p.code).filter((c) => c !== 'role.manage'),
+    // Preparing payroll and approving it are kept apart (spec §3.1).
+    permissions: PERMISSIONS.map((p) => p.code).filter((c) => c !== 'role.manage' && c !== 'payroll.approve'),
   },
   {
     code: 'manager',
@@ -35,7 +43,7 @@ export const ROLES: { code: string; nameLo: string; nameEn: string; scope: Scope
     scope: 'department',
     permissions: [
       'employee.read', 'department.read', 'position.read', 'attendance.read', 'attendance.check',
-      'leave.read', 'leave.request', 'leave.approve', 'dashboard.view',
+      'leave.read', 'leave.request', 'leave.approve', 'dashboard.view', 'payslip.self', 'report.view',
     ],
   },
   {
@@ -43,7 +51,18 @@ export const ROLES: { code: string; nameLo: string; nameEn: string; scope: Scope
     nameLo: 'ພະນັກງານ',
     nameEn: 'Employee',
     scope: 'self',
-    permissions: ['attendance.check', 'attendance.read', 'leave.request', 'leave.read'],
+    permissions: ['attendance.check', 'attendance.read', 'leave.request', 'leave.read', 'payslip.self'],
+  },
+  {
+    code: 'director',
+    nameLo: 'ຜູ້ອຳນວຍການ',
+    nameEn: 'Director',
+    scope: 'all',
+    system: false,
+    permissions: [
+      'employee.read', 'department.read', 'position.read', 'attendance.read', 'leave.read', 'dashboard.view',
+      'payroll.read', 'payroll.approve', 'report.view', 'payslip.self',
+    ],
   },
 ];
 
@@ -67,3 +86,10 @@ export const DEFAULT_SETTINGS = {
   lateGraceMinutes: 15,
   halfDayMinutes: 240,
 };
+
+// General allowance types; the company edits them in Settings (spec §11).
+export const ALLOWANCE_TYPES = [
+  { code: 'POSITION', nameLo: 'ເງິນອຸດໜູນຕຳແໜ່ງ', nameEn: 'Position allowance', taxable: true },
+  { code: 'TRANSPORT', nameLo: 'ຄ່າເດີນທາງ', nameEn: 'Transport', taxable: true },
+  { code: 'MEAL', nameLo: 'ຄ່າອາຫານ', nameEn: 'Meal', taxable: true },
+];

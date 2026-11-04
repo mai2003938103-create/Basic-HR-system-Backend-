@@ -1,20 +1,26 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/db/client.js';
 import * as s from '../../src/db/schema.js';
 import { resetDb } from '../helpers/db.js';
 import { seedBase } from '../../scripts/seed.js';
 
 const counts = () =>
-  Promise.all([db.$count(s.roles), db.$count(s.permissions), db.$count(s.leaveTypes), db.$count(s.users), db.$count(s.rolePermissions)]);
+  Promise.all([db.$count(s.roles), db.$count(s.permissions), db.$count(s.leaveTypes), db.$count(s.users), db.$count(s.rolePermissions), db.$count(s.allowanceTypes)]);
+
+async function roleCodes(code: string) {
+  const role = await db.query.roles.findFirst({ where: eq(s.roles.code, code), with: { permissions: { with: { permission: true } } } });
+  return role!.permissions.map((p) => p.permission.code);
+}
 
 describe('base seed', () => {
   beforeAll(async () => {
     await resetDb();
   });
 
-  it('creates the four system roles', async () => {
-    const roles = await db.select({ code: s.roles.code }).from(s.roles).orderBy(s.roles.code);
-    expect(roles.map((r) => r.code)).toEqual(['employee', 'hr_admin', 'manager', 'super_admin']);
+  it('creates the four system roles and the editable director role', async () => {
+    const roles = await db.select({ code: s.roles.code, isSystem: s.roles.isSystem }).from(s.roles).orderBy(s.roles.code);
+    expect(roles.map((r) => r.code)).toEqual(['director', 'employee', 'hr_admin', 'manager', 'super_admin']);
+    expect(roles.find((r) => r.code === 'director')!.isSystem).toBe(false);
   });
 
   it('gives super_admin every permission', async () => {
@@ -30,7 +36,7 @@ describe('base seed', () => {
       with: { permissions: { with: { permission: true } } },
     });
     expect(emp!.permissions.map((p) => p.permission.code).sort()).toEqual(
-      ['attendance.check', 'attendance.read', 'leave.read', 'leave.request'],
+      ['attendance.check', 'attendance.read', 'leave.read', 'leave.request', 'payslip.self'],
     );
   });
 
@@ -50,6 +56,26 @@ describe('base seed', () => {
   it('creates the super admin who must change password', async () => {
     const [admin] = await db.select().from(s.users).where(eq(s.users.email, process.env.ADMIN_EMAIL!));
     expect(admin.mustChangePassword).toBe(true);
+  });
+
+  it('seeds Stage 2 permissions, role grants, payroll config and allowance types', async () => {
+    const perms = (await db.select().from(s.permissions)).map((p) => p.code);
+    expect(perms).toEqual(expect.arrayContaining(['payroll.read', 'payroll.manage', 'payroll.approve', 'payslip.self', 'report.view', 'settings.manage']));
+    expect(await roleCodes('hr_admin')).not.toContain('payroll.approve');
+    expect(await roleCodes('hr_admin')).toEqual(expect.arrayContaining(['payroll.read', 'payroll.manage', 'settings.manage', 'report.view']));
+    expect(await roleCodes('director')).toEqual(expect.arrayContaining(['payroll.approve', 'payroll.read', 'report.view', 'payslip.self']));
+    expect(await roleCodes('manager')).toEqual(expect.arrayContaining(['payslip.self', 'report.view']));
+    const [st] = await db.select().from(s.companySettings);
+    expect(st.payrollConfig).toMatchObject({ workDaysPerMonth: 22, socialSecurity: { employeeRate: 5.5, employerRate: 6, ceiling: 4500000 }, confirmedAt: null });
+    expect((await db.select().from(s.allowanceTypes)).map((a) => a.code).sort()).toEqual(['MEAL', 'POSITION', 'TRANSPORT']);
+  });
+
+  it('grants newly added permissions to existing roles without undoing edits', async () => {
+    const [hr] = await db.select().from(s.roles).where(eq(s.roles.code, 'hr_admin'));
+    const [rp] = await db.select().from(s.permissions).where(eq(s.permissions.code, 'report.view'));
+    await db.delete(s.rolePermissions).where(and(eq(s.rolePermissions.roleId, hr.id), eq(s.rolePermissions.permissionId, rp.id)));
+    await seedBase(db);
+    expect(await roleCodes('hr_admin')).not.toContain('report.view'); // an edit made in the app survives a re-seed
   });
 
   it('is idempotent', async () => {
