@@ -9,7 +9,7 @@ import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { TZ, localDate } from '../utils/dates.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
-import { page, toPaging } from '../utils/list-query.js';
+import { page, sortBy, toPaging } from '../utils/list-query.js';
 import { canAccessEmployee, employeeScopeWhere } from '../utils/scope.js';
 import { isWorkingDay } from '../utils/workdays.js';
 import type { editAttendanceBody, exportAttendanceQuery, listAttendanceQuery } from '../validators/attendance.validator.js';
@@ -95,7 +95,7 @@ function whereOf(auth: AuthContext, f: Filters): Prisma.AttendanceWhereInput {
 
 export async function list(auth: AuthContext, q: z.infer<typeof listAttendanceQuery>) {
   const { offset, limit, sortField, sortDir } = toPaging(q);
-  const { rows, total } = await attendance.list(whereOf(auth, q), [{ [sortField]: sortDir }, { employee: { employeeCode: 'asc' } }], offset, limit);
+  const { rows, total } = await attendance.list(whereOf(auth, q), [sortBy(sortField, sortDir, ['checkInAt']), { employee: { employeeCode: 'asc' } }], offset, limit);
   return page(rows.map(attendanceListView), total, q);
 }
 

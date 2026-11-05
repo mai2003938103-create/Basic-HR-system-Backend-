@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import * as roles from '../models/role.model.js';
-import { prisma, type Db } from '../models/prisma.js';
+import { prisma, type Db, withTx } from '../models/prisma.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
@@ -28,7 +28,7 @@ async function setPermissions(tx: Db, roleId: string, codes: string[]) {
 }
 
 export async function create(auth: AuthContext, body: z.infer<typeof roleBody>) {
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     const r = await roles.create({ code: body.code, nameLo: body.nameLo, nameEn: body.nameEn, scope: body.scope }, tx);
     await setPermissions(tx, r.id, body.permissionCodes);
     await audit(tx, auth, { action: 'role.create', entity: 'role', entityId: r.id, after: body });
@@ -38,7 +38,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof roleBody>) 
 }
 
 export async function update(auth: AuthContext, id: string, body: z.infer<typeof roleUpdateBody>) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'roles', [id])).length) throw notFound();
     const before = (await roles.findById(id, tx))!;
     if (before.code === 'super_admin') throw conflict('errors.role.superAdminLocked');

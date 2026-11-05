@@ -35,3 +35,11 @@ export function toPaging(q: Pick<ListParams, 'page' | 'pageSize' | 'sort'>) {
 export function page<T>(data: T[], total: number, q: Pick<ListParams, 'page' | 'pageSize'>) {
   return { data, meta: { page: q.page, pageSize: q.pageSize, total } };
 }
+
+/**
+ * Prisma orderBy for one field. Nullable columns keep PostgreSQL's order (the Stage 1 behaviour):
+ * empty values last when ascending, first when descending — MySQL would do the opposite.
+ */
+export function sortBy(field: string, dir: 'asc' | 'desc', nullable: readonly string[] = []) {
+  return nullable.includes(field) ? { [field]: { sort: dir, nulls: dir === 'asc' ? 'last' : 'first' } } : { [field]: dir };
+}

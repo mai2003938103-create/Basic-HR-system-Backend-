@@ -7,3 +7,9 @@ export const prisma = new PrismaClient({ adapter: new PrismaMariaDb(databaseUrl(
 
 /** The client or an interactive transaction; services pass `tx` down to models. */
 export type Db = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * Interactive transaction for services. READ COMMITTED (PostgreSQL's default, which the business rules were written
+ * for): a row read after lockRows() shows its latest committed values, not the transaction's first snapshot.
+ */
+export const withTx = <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => prisma.$transaction(fn, { isolationLevel: 'ReadCommitted' });

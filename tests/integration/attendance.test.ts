@@ -125,4 +125,15 @@ describe('attendance', () => {
     await db.holiday.create({ data: { date: day('2026-12-02'), nameLo: 'ວັນຊາດ', nameEn: 'National Day' } });
     expect(await markAbsences('2026-12-02')).toEqual({ created: 0 });
   });
+
+  it('sorts rows without a check-in like before: last on ascending, first on descending', async () => {
+    const hr = await createUser({ role: 'hr_admin' });
+    const a = await createEmployee();
+    const b = await createEmployee();
+    await db.attendance.create({ data: { employeeId: a.id, workDate: day('2026-11-03'), status: 'present', checkInAt: local('2026-11-03', '08:00') } });
+    const absent = await db.attendance.create({ data: { employeeId: b.id, workDate: day('2026-11-03'), status: 'absent' } });
+    const ids = async (dir: string) => (await testApp().get(`/api/attendance?sort=checkInAt:${dir}&from=2026-11-03&to=2026-11-03`).set(auth(hr.token))).body.data.map((r: any) => r.id);
+    expect((await ids('asc')).at(-1)).toBe(absent.id);
+    expect((await ids('desc'))[0]).toBe(absent.id);
+  });
 });

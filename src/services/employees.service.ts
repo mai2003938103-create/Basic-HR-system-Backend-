@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { Prisma } from '../generated/prisma/client.js';
 import * as employees from '../models/employee.model.js';
-import { prisma, type Db } from '../models/prisma.js';
+import { prisma, type Db, withTx } from '../models/prisma.js';
 import * as roles from '../models/role.model.js';
 import * as users from '../models/user.model.js';
 import type { AuthContext } from '../utils/auth-context.js';
@@ -59,7 +59,7 @@ async function assertPosition(tx: Db, departmentId: string, positionId: string) 
 export async function create(auth: AuthContext, body: z.infer<typeof createEmployeeBody>) {
   requireAllScope(auth);
   const { account, ...data } = body;
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     await assertPosition(tx, data.departmentId, data.positionId);
     const e = await employees.create({ ...data, searchText: searchTextOf(data) }, tx);
     if (account) {
@@ -76,7 +76,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof createEmplo
 
 export async function update(auth: AuthContext, id: string, body: z.infer<typeof updateEmployeeBody>) {
   requireAllScope(auth);
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'employees', [id])).length) throw notFound();
     const before = (await employees.findById(id, tx))!;
     const merged = { ...before, ...body };
@@ -90,7 +90,7 @@ export async function update(auth: AuthContext, id: string, body: z.infer<typeof
 export async function setStatus(auth: AuthContext, id: string, status: z.infer<typeof statusBody>['status']) {
   requireAllScope(auth);
   let userId: string | undefined;
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'employees', [id])).length) throw notFound();
     const before = (await employees.findById(id, tx))!;
     const linked = await users.findByEmployee(id, tx);

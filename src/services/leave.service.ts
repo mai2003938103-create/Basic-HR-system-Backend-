@@ -4,7 +4,7 @@ import * as attendance from '../models/attendance.model.js';
 import * as leave from '../models/leave.model.js';
 import * as leaveTypes from '../models/leave-type.model.js';
 import { fromDateString } from '../models/mappers.js';
-import { prisma, type Db } from '../models/prisma.js';
+import { prisma, type Db, withTx } from '../models/prisma.js';
 import { userIdsWithPermission, type AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { localDate, yearOf } from '../utils/dates.js';
@@ -116,7 +116,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof createLeave
     throw badRequest('errors.leave.documentRequired', [{ field: 'document', message: 'errors.leave.documentRequired' }]);
   }
 
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     await lockRows(tx, 'employees', [employeeId]);
     const emp = (await tx.employee.findUnique({ where: { id: employeeId } }))!;
     if (await leave.hasOverlap(employeeId, body.startDate, body.endDate, tx)) throw conflict('errors.leave.overlap');
@@ -145,7 +145,7 @@ async function lockRequest(tx: Prisma.TransactionClient, id: string) {
 }
 
 async function decide(auth: AuthContext, id: string, approve: boolean, note: string | undefined) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     let charged: Record<string, number> | undefined;
     const { r, emp, managerId } = await lockRequest(tx, id);
     if (!canAccessEmployee(auth, emp)) throw notFound();
@@ -185,7 +185,7 @@ export const approve = (auth: AuthContext, id: string, note?: string) => decide(
 export const reject = (auth: AuthContext, id: string, note: string) => decide(auth, id, false, note);
 
 export async function cancel(auth: AuthContext, id: string) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     const { r, emp } = await lockRequest(tx, id);
     if (!canAccessEmployee(auth, emp)) throw notFound();
     if (auth.employeeId !== r.employeeId && !auth.permissions.has('leave.manage')) throw forbidden();

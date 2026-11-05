@@ -79,4 +79,13 @@ describe('users', () => {
     const under = await testApp().get('/api/users?search=a_').set(auth(hr.token));
     expect(under.body.data.map((u: any) => u.email)).toEqual(['a_c@test.la']);
   });
+
+  it('sorts users who never signed in like before: last on ascending, first on descending', async () => {
+    await db.user.updateMany({ data: { lastLoginAt: new Date('2026-11-01T08:00:00Z') } });
+    const never = await createUser({ role: 'employee' });
+    const asc = (await testApp().get('/api/users?sort=lastLoginAt:asc&pageSize=100').set(auth(hr.token))).body.data.map((u: any) => u.id);
+    const desc = (await testApp().get('/api/users?sort=lastLoginAt:desc&pageSize=100').set(auth(hr.token))).body.data.map((u: any) => u.id);
+    expect(asc.at(-1)).toBe(never.user.id);
+    expect(desc[0]).toBe(never.user.id);
+  });
 });

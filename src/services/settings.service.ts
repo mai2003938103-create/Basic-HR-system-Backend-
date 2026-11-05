@@ -1,5 +1,5 @@
 import type { Prisma } from '../generated/prisma/client.js';
-import { prisma } from '../models/prisma.js';
+import { prisma, withTx } from '../models/prisma.js';
 import { findSettings, holidayDates, updateSettings, type SettingsRow } from '../models/settings.model.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
@@ -52,7 +52,7 @@ type FullSettings = Awaited<ReturnType<typeof fullSettings>>;
 /** Saves one settings section in a transaction with an audit entry; every write clears the cache. */
 async function save(auth: AuthContext, action: string, body: unknown, toData: (before: FullSettings) => Prisma.CompanySettingsUpdateInput) {
   const before = await fullSettings();
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     await updateSettings(toData(before), tx);
     invalidateSettings();
     await audit(tx, auth, { action, entity: 'company_settings', entityId: '1', before, after: body });

@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { Prisma } from '../generated/prisma/client.js';
 import * as positions from '../models/position.model.js';
-import { prisma } from '../models/prisma.js';
+import { prisma, withTx } from '../models/prisma.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
@@ -39,7 +39,7 @@ async function assertDepartment(id: string | undefined) {
 
 export async function create(auth: AuthContext, body: z.infer<typeof createPositionBody>) {
   await assertDepartment(body.departmentId);
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     const p = await positions.create(body, tx);
     await audit(tx, auth, { action: 'position.create', entity: 'position', entityId: p.id, after: p });
     return p.id;
@@ -49,7 +49,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof createPosit
 
 export async function update(auth: AuthContext, id: string, body: z.infer<typeof updatePositionBody>) {
   await assertDepartment(body.departmentId);
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     const before = await positions.findById(id, tx);
     if (!before) throw notFound();
     if (body.departmentId && body.departmentId !== before.departmentId && (await positions.employeeCount(id, tx)) > 0) throw conflict('errors.position.inUse');
@@ -60,7 +60,7 @@ export async function update(auth: AuthContext, id: string, body: z.infer<typeof
 }
 
 export async function remove(auth: AuthContext, id: string) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'positions', [id])).length) throw notFound();
     const before = await positions.findById(id, tx);
     if ((await positions.employeeCount(id, tx)) > 0) throw conflict('errors.position.inUse');

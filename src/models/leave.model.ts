@@ -56,11 +56,9 @@ export const findBalance = async (id: string, db: Db = prisma) => {
 
 export const addUsed = (id: string, days: number, db: Db = prisma) => db.leaveBalance.update({ where: { id }, data: { usedDays: { increment: days } } });
 
-/** usedDays − days, never below 0 (former greatest(used − days, 0)). */
+/** usedDays − days, never below 0, in one atomic statement (as GREATEST(used − days, 0) did before). */
 export async function refundUsed(id: string, days: number, db: Db = prisma) {
-  const b = (await db.leaveBalance.findUnique({ where: { id } }))!;
-  const next = Math.max(0, b.usedDays.toNumber() - days);
-  await db.leaveBalance.update({ where: { id }, data: { usedDays: String(next) } });
+  await db.$executeRaw`UPDATE leave_balances SET used_days = GREATEST(used_days - ${days}, 0), updated_at = CURRENT_TIMESTAMP(3) WHERE id = ${id}`;
 }
 
 export const setEntitled = async (id: string, entitledDays: number, db: Db = prisma) =>

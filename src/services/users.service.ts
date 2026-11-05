@@ -1,14 +1,14 @@
 import type { z } from 'zod';
 import { env } from '../config/env.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { prisma, type Db } from '../models/prisma.js';
+import { prisma, type Db, withTx } from '../models/prisma.js';
 import * as roles from '../models/role.model.js';
 import * as users from '../models/user.model.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 import { likeEscape } from '../utils/http.js';
-import { page, toPaging } from '../utils/list-query.js';
+import { page, sortBy, toPaging } from '../utils/list-query.js';
 import { lockRows } from '../utils/lock.js';
 import { hashPassword } from '../utils/password.js';
 import { assertOtherSuperAdmin, isSuperAdmin } from '../utils/super-admin.js';
@@ -29,7 +29,7 @@ export async function list(q: z.infer<typeof listUsersQuery>) {
   if (q.isActive !== undefined) where.isActive = q.isActive;
   if (q.role) where.roles = { some: { role: { code: q.role } } };
   const { offset, limit, sortField, sortDir } = toPaging(q);
-  const { ids, total } = await users.list(where, [{ [sortField]: sortDir }, { id: 'asc' }], offset, limit);
+  const { ids, total } = await users.list(where, [sortBy(sortField, sortDir, ['lastLoginAt']), { id: 'asc' }], offset, limit);
   return page(await toDtos(ids), total, q);
 }
 
@@ -56,7 +56,7 @@ async function assertEmployeeFree(tx: Db, employeeId: string | null | undefined,
 }
 
 export async function create(auth: AuthContext, body: z.infer<typeof createUserBody>) {
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     const found = await resolveRoles(tx, auth, body.roleCodes);
     await assertEmployeeFree(tx, body.employeeId);
     const u = await users.create(
@@ -70,7 +70,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof createUserB
 }
 
 export async function update(auth: AuthContext, id: string, body: z.infer<typeof updateUserBody>) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'users', [id])).length) throw notFound();
     const before = (await users.findById(id, tx))!;
     const wasSa = await isSuperAdmin(tx, id);
@@ -92,7 +92,7 @@ export async function update(auth: AuthContext, id: string, body: z.infer<typeof
 
 export async function setStatus(auth: AuthContext, id: string, isActive: boolean) {
   if (id === auth.userId && !isActive) throw badRequest('errors.user.cannotDeactivateSelf');
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'users', [id])).length) throw notFound();
     const before = (await users.findById(id, tx))!;
     if (await isSuperAdmin(tx, id)) {

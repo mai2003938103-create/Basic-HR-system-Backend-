@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { Prisma } from '../generated/prisma/client.js';
 import * as departments from '../models/department.model.js';
-import { prisma } from '../models/prisma.js';
+import { prisma, withTx } from '../models/prisma.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
@@ -40,7 +40,7 @@ async function assertManager(managerId: string | null | undefined) {
 
 export async function create(auth: AuthContext, body: z.infer<typeof createDepartmentBody>) {
   await assertManager(body.managerId);
-  const id = await prisma.$transaction(async (tx) => {
+  const id = await withTx(async (tx) => {
     const d = await departments.create(body, tx);
     await audit(tx, auth, { action: 'department.create', entity: 'department', entityId: d.id, after: d });
     return d.id;
@@ -50,7 +50,7 @@ export async function create(auth: AuthContext, body: z.infer<typeof createDepar
 
 export async function update(auth: AuthContext, id: string, body: z.infer<typeof updateDepartmentBody>) {
   await assertManager(body.managerId);
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     const before = await departments.findById(id, tx);
     if (!before) throw notFound();
     const after = await departments.update(id, body, tx);
@@ -60,7 +60,7 @@ export async function update(auth: AuthContext, id: string, body: z.infer<typeof
 }
 
 export async function remove(auth: AuthContext, id: string) {
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     if (!(await lockRows(tx, 'departments', [id])).length) throw notFound();
     const before = await departments.findById(id, tx);
     const used = await departments.usage(id, tx);

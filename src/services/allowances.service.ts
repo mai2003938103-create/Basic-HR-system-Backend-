@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import * as allowances from '../models/allowance.model.js';
-import { prisma } from '../models/prisma.js';
+import { prisma, withTx } from '../models/prisma.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { fieldError, notFound } from '../utils/errors.js';
@@ -27,7 +27,7 @@ export async function replaceForEmployee(auth: AuthContext, employeeId: string, 
   const keep = new Map(items.filter((i) => i.amount > 0).map((i) => [i.typeId, i.amount]));
   if (keep.size && (await allowances.countTypes([...keep.keys()])) !== keep.size) throw fieldError('items', 'errors.common.notFound');
   const before = await rows(employeeId);
-  await prisma.$transaction(async (tx) => {
+  await withTx(async (tx) => {
     await allowances.replaceForEmployee(employeeId, [...keep], tx);
     await audit(tx, auth, { action: 'employee.allowances', entity: 'employee', entityId: employeeId, before, after: [...keep].map(([typeId, amount]) => ({ typeId, amount })) });
   });
