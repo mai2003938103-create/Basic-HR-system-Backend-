@@ -118,3 +118,9 @@ export async function setPhoto(auth: AuthContext, id: string, key: string) {
   await employees.update(id, { photoUrl: `/api/files/${key}` });
   return get(auth, id);
 }
+
+/** Own profile photo: any signed-in employee may change theirs; nothing else on the record. */
+export async function setOwnPhoto(auth: AuthContext, id: string, key: string | null) {
+  await employees.update(id, { photoUrl: key ? `/api/files/${key}` : null });
+  return get(auth, id);
+}

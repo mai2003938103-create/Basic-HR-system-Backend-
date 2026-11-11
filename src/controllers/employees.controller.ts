@@ -22,3 +22,13 @@ export const uploadPhoto = async (req: Request, res: Response) => {
   const key = await saveUpload(req.file, 'photos');
   res.json({ data: await svc.setPhoto(req.auth!, req.params.id, key) });
 };
+export const uploadOwnPhoto = async (req: Request, res: Response) => {
+  if (!req.auth!.employeeId) throw notFound();
+  if (!req.file) throw badRequest('errors.upload.missing');
+  const key = await saveUpload(req.file, 'photos');
+  res.json({ data: await svc.setOwnPhoto(req.auth!, req.auth!.employeeId, key) });
+};
+export const removeOwnPhoto = async (req: Request, res: Response) => {
+  if (!req.auth!.employeeId) throw notFound();
+  res.json({ data: await svc.setOwnPhoto(req.auth!, req.auth!.employeeId, null) });
+};
