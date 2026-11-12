@@ -1,1 +1,15 @@
 src/generated/
+
+# Secrets and local configuration: never commit (copy .env.example instead)
+.env
+.env.*
+!.env.example
+
+# Dependencies, build output and test artefacts
+node_modules/
+dist/
+coverage/
+uploads/
+uploads-test/
+uploads-e2e/
+*.tsbuildinfo
