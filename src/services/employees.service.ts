@@ -7,14 +7,14 @@ import * as users from '../models/user.model.js';
 import type { AuthContext } from '../utils/auth-context.js';
 import { audit } from '../utils/audit.js';
 import { localDate } from '../utils/dates.js';
-import { badRequest, forbidden, notFound } from '../utils/errors.js';
+import { badRequest, fieldError, forbidden, notFound } from '../utils/errors.js';
 import { likeEscape } from '../utils/http.js';
 import { page, toPaging } from '../utils/list-query.js';
 import { lockRows } from '../utils/lock.js';
 import { hashPassword } from '../utils/password.js';
 import { canAccessEmployee, employeeScopeWhere } from '../utils/scope.js';
 import { assertOtherSuperAdmin, isSuperAdmin } from '../utils/super-admin.js';
-import type { createEmployeeBody, listEmployeesQuery, statusBody, updateEmployeeBody } from '../validators/employees.validator.js';
+import type { createEmployeeBody, listEmployeesQuery, selfUpdateBody, statusBody, updateEmployeeBody } from '../validators/employees.validator.js';
 import { employeeView } from '../views/employee.view.js';
 import { revokeAll } from './auth.service.js';
 
@@ -83,6 +83,22 @@ export async function update(auth: AuthContext, id: string, body: z.infer<typeof
     if (body.departmentId || body.positionId) await assertPosition(tx, merged.departmentId, merged.positionId);
     const after = await employees.update(id, { ...body, searchText: searchTextOf(merged) }, tx);
     await audit(tx, auth, { action: 'employee.update', entity: 'employee', entityId: id, before, after });
+  });
+  return get(auth, id);
+}
+
+/** Own personal and contact details (self-service profile); no scope or permission beyond being this employee. */
+export async function updateOwn(auth: AuthContext, body: z.infer<typeof selfUpdateBody>) {
+  const id = auth.employeeId;
+  if (!id) throw notFound();
+  await withTx(async (tx) => {
+    if (!(await lockRows(tx, 'employees', [id])).length) throw notFound();
+    const before = (await employees.findById(id, tx))!;
+    // Same rule as HR's form: at least 15 years old on the hire date.
+    const fifteenth = `${Number(body.dateOfBirth.slice(0, 4)) + 15}${body.dateOfBirth.slice(4)}`;
+    if (fifteenth > before.hireDate) throw fieldError('dateOfBirth', 'errors.employee.tooYoung');
+    const after = await employees.update(id, { ...body, searchText: searchTextOf({ ...before, ...body }) }, tx);
+    await audit(tx, auth, { action: 'employee.selfUpdate', entity: 'employee', entityId: id, before, after });
   });
   return get(auth, id);
 }

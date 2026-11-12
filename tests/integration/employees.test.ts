@@ -16,6 +16,22 @@ async function payload(over: Record<string, unknown> = {}) {
 }
 
 describe('employees', () => {
+  it('lets an employee change their own personal and contact details, but not job or pay', async () => {
+    const u = await createUser({ role: 'employee', employee: { firstName: 'Old', basicSalary: 5000000, hireDate: '2024-01-01' } });
+    const body = { firstName: 'ນາລີ', lastName: 'ວົງສະຫວັນ', gender: 'female', dateOfBirth: '1995-04-20', phone: '020 5555 9999', address: 'ບ້ານໂພນໄຊ', emergencyContactName: 'ແມ່', emergencyContactPhone: '02077778888', emergencyContactRelation: 'ແມ່', basicSalary: 99, email: 'x@y.la' };
+    const r = await testApp().put('/api/employees/me').set(auth(u.token)).send(body);
+    expect(r.status).toBe(200);
+    expect(r.body.data).toMatchObject({ firstName: 'ນາລີ', lastName: 'ວົງສະຫວັນ', gender: 'female', dateOfBirth: '1995-04-20', phone: '020 5555 9999', address: 'ບ້ານໂພນໄຊ', basicSalary: '5000000.00', email: u.employee!.email });
+    const bad = await testApp().put('/api/employees/me').set(auth(u.token)).send({ ...body, phone: 'abc', firstName: '' });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.details).toEqual(expect.arrayContaining([{ field: 'phone', message: 'errors.validation.phone' }, { field: 'firstName', message: 'errors.validation.required' }]));
+    const young = await testApp().put('/api/employees/me').set(auth(u.token)).send({ ...body, dateOfBirth: '2015-01-01' });
+    expect(young.body.error.details).toContainEqual({ field: 'dateOfBirth', message: 'errors.employee.tooYoung' });
+    const noEmployee = await createUser({ role: 'hr_admin', withEmployee: false });
+    expect((await testApp().put('/api/employees/me').set(auth(noEmployee.token)).send(body)).status).toBe(404);
+  });
+
+
   let hr: string;
   beforeEach(async () => {
     await resetDb();

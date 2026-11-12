@@ -12,6 +12,8 @@ import { settingsDocs, settingsRoutes } from './settings.routes.js';
 import { departmentDocs, departmentRoutes } from './departments.routes.js';
 import { employeeDocs, employeeRoutes } from './employees.routes.js';
 import { fileDocs, fileRoutes } from './files.routes.js';
+import { payrollDocs, payrollRoutes, payslipRoutes } from './payroll.routes.js';
+import { reportDocs, reportRoutes } from './reports.routes.js';
 import { positionDocs, positionRoutes } from './positions.routes.js';
 import { permissionRoutes, roleDocs, roleRoutes } from './roles.routes.js';
 import { userDocs, userRoutes } from './users.routes.js';
@@ -34,10 +36,13 @@ export const MOUNTS: [string, () => Router][] = [
   ['/api/notifications', notificationRoutes],
   ['/api/dashboard', dashboardRoutes],
   ['/api/allowance-types', allowanceTypeRoutes],
+  ['/api/payroll', payrollRoutes],
+  ['/api/payslips', payslipRoutes],
+  ['/api/reports', reportRoutes],
 ];
 
 /** OpenAPI catalogue; tests/integration/openapi.test.ts keeps it in step with MOUNTS. */
-export const DOCS: Op[] = [...authDocs, ...departmentDocs, ...positionDocs, ...fileDocs, ...employeeDocs, ...userDocs, ...roleDocs, ...settingsDocs, ...calendarDocs, ...attendanceDocs, ...leaveDocs, ...notificationDocs, ...dashboardDocs, ...allowanceDocs];
+export const DOCS: Op[] = [...authDocs, ...departmentDocs, ...positionDocs, ...fileDocs, ...employeeDocs, ...userDocs, ...roleDocs, ...settingsDocs, ...calendarDocs, ...attendanceDocs, ...leaveDocs, ...notificationDocs, ...dashboardDocs, ...allowanceDocs, ...payrollDocs, ...reportDocs];
 
 /** Every API route as METHOD + full path (used to keep the OpenAPI document complete). */
 export function listRoutes(): { method: string; path: string }[] {

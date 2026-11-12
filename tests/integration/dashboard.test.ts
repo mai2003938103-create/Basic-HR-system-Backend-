@@ -69,6 +69,29 @@ describe('dashboard', () => {
     expect(res.body.data.byStatus.find((x: any) => x.status === 'inactive').count).toBe(1);
   });
 
+  it("lists today's team for HR: not checked in, late and on leave", async () => {
+    const { hr } = await fixture();
+    const res = await testApp().get('/api/dashboard/today').set(auth(signAccessToken({ sub: hr.user.id })));
+    expect(res.status).toBe(200);
+    const d = res.body.data;
+    expect(d).toMatchObject({ date: TODAY, isWorkingDay: true, present: 3, total: 5 });
+    expect(d.notCheckedIn.map((p: any) => p.id)).toEqual([hr.employee!.id]);
+    expect(d.late).toHaveLength(1);
+    expect(d.late[0]).toMatchObject({ checkInAt: expect.any(String), department: expect.objectContaining({ nameLo: expect.any(String) }) });
+    expect(d.onLeave).toHaveLength(1);
+    expect(d.onLeave[0]).toMatchObject({ endDate: TODAY, leaveType: { nameEn: 'Annual Leave' } });
+  });
+
+  it("limits today's team to a manager's department and refuses employees", async () => {
+    const { mgr } = await fixture();
+    const d = (await testApp().get('/api/dashboard/today').set(auth(signAccessToken({ sub: mgr.user.id })))).body.data;
+    expect(d).toMatchObject({ present: 2, total: 3, notCheckedIn: [] });
+    expect(d.late).toHaveLength(1);
+    expect(d.onLeave).toHaveLength(1);
+    const e = await createUser({ role: 'employee' });
+    expect((await testApp().get('/api/dashboard/today').set(auth(e.token))).status).toBe(403);
+  });
+
   it('requires dashboard.view', async () => {
     const e = await createUser({ role: 'employee' });
     expect((await testApp().get('/api/dashboard/summary').set(auth(signAccessToken({ sub: e.user.id })))).status).toBe(403);

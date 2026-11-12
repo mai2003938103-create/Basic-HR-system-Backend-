@@ -64,3 +64,16 @@ export const accountSchema = z.object({
 export const createEmployeeBody = z.object({ ...fields, account: accountSchema.optional() }).superRefine(dateRules);
 export const updateEmployeeBody = z.object(fields).partial().superRefine(dateRules);
 export const statusBody = z.object({ status: z.enum(STATUSES) });
+
+/** What an employee may change on their own record: personal and contact details (email, job and pay stay with HR). */
+export const selfUpdateBody = z.object({
+  firstName: requiredText(100),
+  lastName: requiredText(100),
+  gender: z.enum(['male', 'female', 'other']),
+  dateOfBirth: isoDate,
+  phone,
+  address: optionalText,
+  emergencyContactName: optionalText,
+  emergencyContactPhone: phone.nullish().or(z.literal('')).transform((v) => (v ? v : null)),
+  emergencyContactRelation: optionalText,
+});

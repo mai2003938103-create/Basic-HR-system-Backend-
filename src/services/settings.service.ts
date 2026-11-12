@@ -39,6 +39,8 @@ export async function publicSettings() {
     workingDays: st.workingDays,
     workStart: st.workStart,
     workEnd: st.workEnd,
+    breakStart: st.breakStart,
+    breakEnd: st.breakEnd,
   };
 }
 

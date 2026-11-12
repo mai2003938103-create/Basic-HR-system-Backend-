@@ -28,7 +28,7 @@ describe('attendance', () => {
     token = signAccessToken({ sub: user.id }); // access tokens live 15 minutes
     const co = await testApp().post('/api/attendance/check-out').set(auth(token));
     expect(co.status).toBe(200);
-    expect(co.body.data).toMatchObject({ status: 'late', workedMinutes: 530, earlyLeaveMinutes: 0 });
+    expect(co.body.data).toMatchObject({ status: 'late', workedMinutes: 440, earlyLeaveMinutes: 0 });
     const today = await testApp().get('/api/attendance/today').set(auth(token));
     expect(today.body.data.record.checkOutAt).toBeTruthy();
   });
@@ -89,7 +89,7 @@ describe('attendance', () => {
       .set(auth(hr.token))
       .send({ checkInAt: local('2026-11-03', '08:00').toISOString(), checkOutAt: local('2026-11-03', '17:00').toISOString(), note: 'ລືມສະແກນ' });
     expect(ok.status).toBe(200);
-    expect(ok.body.data).toMatchObject({ status: 'present', lateMinutes: 0, workedMinutes: 540, note: 'ລືມສະແກນ' });
+    expect(ok.body.data).toMatchObject({ status: 'present', lateMinutes: 0, workedMinutes: 450, note: 'ລືມສະແກນ' });
     expect((await testApp().put(`/api/attendance/${rec.id}`).set(auth(u.token)).send({ note: 'x' })).status).toBe(403);
   });
 

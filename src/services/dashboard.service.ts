@@ -103,3 +103,52 @@ function addMonths(ym: string, n: number) {
   const t = y * 12 + (m - 1) + n;
   return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
 }
+
+const personSelect = {
+  id: true, employeeCode: true, firstName: true, lastName: true, photoUrl: true, department: { select: { nameLo: true, nameEn: true } },
+} satisfies Prisma.EmployeeSelect;
+
+/** Today's team in scope: who has not checked in, who came late, who is on leave (spec §6). Same rules as `summary`. */
+export async function today(auth: AuthContext) {
+  const scope = employeeScopeWhere(auth);
+  const date = localDate(new Date());
+  const d = fromDateString(date);
+  const st = await getSettings();
+  const working = isWorkingDay(date, st.workingDays, await holidaySet(date, date));
+  const staff = and(scope, ACTIVE, { hireDate: { lte: d } });
+
+  const [total, present, notCheckedIn, late, leave] = await Promise.all([
+    prisma.employee.count({ where: staff }),
+    prisma.attendance.count({ where: { workDate: d, status: { in: [...PRESENT] }, employee: staff } }),
+    working
+      ? prisma.employee.findMany({ where: and(staff, { attendance: { none: { workDate: d } }, leaveRequests: { none: onLeaveOn(d) } }), select: personSelect, orderBy: { employeeCode: 'asc' } })
+      : Promise.resolve([]),
+    prisma.attendance.findMany({
+      where: { workDate: d, status: 'late', checkInAt: { not: null }, employee: staff },
+      select: { checkInAt: true, lateMinutes: true, employee: { select: personSelect } },
+      orderBy: { lateMinutes: 'desc' },
+    }),
+    prisma.leaveRequest.findMany({
+      where: { ...onLeaveOn(d), employee: staff },
+      select: { endDate: true, leaveType: { select: { nameLo: true, nameEn: true } }, employee: { select: personSelect } },
+      orderBy: { endDate: 'asc' },
+    }),
+  ]);
+
+  // One row per person even if two approved requests overlap today.
+  const seen = new Set<string>();
+  const onLeave = leave
+    .filter((l) => !seen.has(l.employee.id) && seen.add(l.employee.id))
+    .map((l) => ({ ...l.employee, leaveType: l.leaveType, endDate: toDateString(l.endDate)! }));
+
+  return {
+    date,
+    isWorkingDay: working,
+    workStart: st.workStart,
+    present,
+    total,
+    notCheckedIn,
+    late: late.map((a) => ({ ...a.employee, checkInAt: a.checkInAt!.toISOString(), lateMinutes: a.lateMinutes })),
+    onLeave,
+  };
+}

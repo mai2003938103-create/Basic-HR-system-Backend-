@@ -383,6 +383,9 @@ model CompanySettings {
   workingDays        Json     @map("working_days")
   workStart          String   @default("08:00") @map("work_start") @db.VarChar(5)
   workEnd            String   @default("17:00") @map("work_end") @db.VarChar(5)
+  /// Lunch break; not counted as time worked.
+  breakStart         String   @default("12:00") @map("break_start") @db.VarChar(5)
+  breakEnd           String   @default("13:30") @map("break_end") @db.VarChar(5)
   lateGraceMinutes   Int      @default(15) @map("late_grace_minutes")
   halfDayMinutes     Int      @default(240) @map("half_day_minutes")
   payrollConfig      Json     @map("payroll_config")

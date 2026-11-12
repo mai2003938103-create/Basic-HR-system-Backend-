@@ -22,11 +22,15 @@ export const workTimeBody = z
     workingDays: z.array(z.number().int().min(0).max(6)).min(1).max(7).transform((d) => [...new Set(d)].sort()),
     workStart: hhmm,
     workEnd: hhmm,
+    breakStart: hhmm,
+    breakEnd: hhmm,
     lateGraceMinutes: z.number().int().min(0).max(240),
     halfDayMinutes: z.number().int().min(30).max(720),
   })
   .superRefine((v, ctx) => {
     if (toMinutes(v.workEnd) <= toMinutes(v.workStart)) ctx.addIssue({ code: 'custom', path: ['workEnd'], message: 'errors.settings.endBeforeStart' });
+    if (toMinutes(v.breakEnd) <= toMinutes(v.breakStart)) ctx.addIssue({ code: 'custom', path: ['breakEnd'], message: 'errors.settings.endBeforeStart' });
+    if (toMinutes(v.breakStart) < toMinutes(v.workStart) || toMinutes(v.breakEnd) > toMinutes(v.workEnd)) ctx.addIssue({ code: 'custom', path: ['breakStart'], message: 'errors.settings.breakOutsideWork' });
   });
 
 /** The payroll rules HR edits; confirmation is set only by the confirm endpoint. */

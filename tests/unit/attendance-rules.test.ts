@@ -1,4 +1,4 @@
-import { evaluateCheckIn, evaluateCheckOut } from '../../src/services/attendance.rules.js';
+import { breakOverlap, evaluateCheckIn, evaluateCheckOut } from '../../src/services/attendance.rules.js';
 
 const S = { workStart: '08:00', workEnd: '17:00', lateGraceMinutes: 15, halfDayMinutes: 240 };
 // 08:10 Vientiane = 01:10 UTC
@@ -8,6 +8,18 @@ const at = (hhmm: string, date = '2026-11-03') => {
 };
 
 describe('attendance rules', () => {
+  const L = { ...S, breakStart: '12:00', breakEnd: '13:30' };
+  it('does not count the lunch break as worked time', () => {
+    expect(evaluateCheckOut(at('08:00'), at('17:00'), L, 'present')).toMatchObject({ workedMinutes: 450, status: 'present' });
+  });
+  it('deducts only the part of the break inside the worked span', () => {
+    expect(breakOverlap(12 * 60 + 30, 17 * 60, L)).toBe(60);
+    expect(breakOverlap(8 * 60, 11 * 60, L)).toBe(0);
+    expect(breakOverlap(8 * 60, 17 * 60, {})).toBe(0);
+  });
+  it('makes a morning-only day a half day once the break is excluded', () => {
+    expect(evaluateCheckOut(at('09:00'), at('13:30'), L, 'present')).toMatchObject({ workedMinutes: 180, status: 'half_day' });
+  });
   it('is present within the grace period', () => {
     expect(evaluateCheckIn(at('08:10'), S)).toEqual({ workDate: '2026-11-03', status: 'present', lateMinutes: 0 });
   });

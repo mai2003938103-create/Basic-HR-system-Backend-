@@ -8,6 +8,7 @@ export const me = async (req: Request, res: Response) => {
   if (!req.auth!.employeeId) throw notFound();
   res.json({ data: await svc.get(req.auth!, req.auth!.employeeId) });
 };
+export const updateMe = async (req: Request, res: Response) => res.json({ data: await svc.updateOwn(req.auth!, req.body) });
 export const get = async (req: Request, res: Response) => res.json({ data: await svc.get(req.auth!, req.params.id) });
 export const create = async (req: Request, res: Response) => res.status(201).json({ data: await svc.create(req.auth!, req.body) });
 export const update = async (req: Request, res: Response) => res.json({ data: await svc.update(req.auth!, req.params.id, req.body) });

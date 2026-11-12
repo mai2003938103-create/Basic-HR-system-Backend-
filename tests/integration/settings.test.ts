@@ -45,11 +45,13 @@ describe('settings', () => {
   it('updates company details and working time, refusing an end before the start', async () => {
     const co = await testApp().put('/api/settings/company').set(auth(hr)).send({ companyNameLo: 'ບໍລິສັດ ທົດສອບ', companyNameEn: 'Test Co', addressLo: 'ວຽງຈັນ', taxId: '123', currencyCode: 'LAK', currencySymbol: '₭' }).expect(200);
     expect(co.body.data).toMatchObject({ companyNameEn: 'Test Co', addressLo: 'ວຽງຈັນ', taxId: '123' });
-    const bad = await testApp().put('/api/settings/work-time').set(auth(hr)).send({ workingDays: [1, 2, 3, 4, 5], workStart: '17:00', workEnd: '08:00', lateGraceMinutes: 15, halfDayMinutes: 240 });
+    const bad = await testApp().put('/api/settings/work-time').set(auth(hr)).send({ workingDays: [1, 2, 3, 4, 5], workStart: '17:00', workEnd: '08:00', breakStart: '12:00', breakEnd: '13:00', lateGraceMinutes: 15, halfDayMinutes: 240 });
     expect(bad.status).toBe(400);
     expect(bad.body.error.details).toContainEqual({ field: 'workEnd', message: 'errors.settings.endBeforeStart' });
-    const ok = await testApp().put('/api/settings/work-time').set(auth(hr)).send({ workingDays: [1, 2, 3, 4, 5, 6], workStart: '07:30', workEnd: '16:30', lateGraceMinutes: 10, halfDayMinutes: 240 }).expect(200);
-    expect(ok.body.data).toMatchObject({ workingDays: [1, 2, 3, 4, 5, 6], workStart: '07:30' });
+    const outside = await testApp().put('/api/settings/work-time').set(auth(hr)).send({ workingDays: [1, 2, 3, 4, 5], workStart: '08:00', workEnd: '17:00', breakStart: '07:00', breakEnd: '07:30', lateGraceMinutes: 15, halfDayMinutes: 240 });
+    expect(outside.body.error.details).toContainEqual({ field: 'breakStart', message: 'errors.settings.breakOutsideWork' });
+    const ok = await testApp().put('/api/settings/work-time').set(auth(hr)).send({ workingDays: [1, 2, 3, 4, 5, 6], workStart: '07:30', workEnd: '16:30', breakStart: '12:00', breakEnd: '13:30', lateGraceMinutes: 10, halfDayMinutes: 240 }).expect(200);
+    expect(ok.body.data).toMatchObject({ workingDays: [1, 2, 3, 4, 5, 6], workStart: '07:30', breakStart: '12:00', breakEnd: '13:30' });
     expect((await testApp().get('/api/settings/public').set(auth(hr))).body.data).toMatchObject({ companyNameEn: 'Test Co', workStart: '07:30' });
   });
 });
